@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+
+<package format="2">
+
+  <name>nano_gicp</name>
+  <version>1.0.0</version>
+  <description>nano_gicp</description>
+
+  <maintainer email="eungchang_mason@kaist.ac.kr">Eungchang Mason Lee</maintainer>
+  <maintainer email="kennyjchen@ucla.edu">Kenny J. Chen</maintainer>
+  <maintainer email="btlopez@ucla.edu">Brett T. Lopez</maintainer>
+
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <export>
+  </export>
+
+</package>

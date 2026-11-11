@@ -1,0 +1,17 @@
+<launch> 
+    <!-- datasets path -->
+    <!-- <param name="seq_dir" type="string" value="/media/bhbhchoi/6EEA0A20EA09E4E5/Research/Dataset/Radar_dataset/Scanning_Radar/KAIST_03/" /> -->
+    <param name="seq_dir" type="string" value="(path_of_your_dataset)/KAIST_03/" />
+    <!-- KeyFrame -->
+    <param name="keyframe_meter_gap" type="double" value="0.0"/> 
+    <param name="is_withInitialICP"  type="bool"   value="true"/>
+    <!-- save path -->
+    <!-- <param name="save_directory" type="string" value="/media/bhbhchoi/6EEA0A20EA09E4E5/Research/Project/ReFeree_journal/results/"/> -->
+    <param name="save_directory" type="string" value="(path_of_your_results)/results/"/>
+    <node pkg="yeti" type="yetiOdom" name="yetiOdom" output="screen" />
+    <node pkg="yeti" type="posegraph" name="posegraph" output="screen" />
+    <arg name="rviz" default="true" />
+    <group if="$(arg rviz)">
+        <node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz" args="-d $(find yeti)/rviz/yeti_pgo_rviz.rviz" />
+    </group>
+</launch>
