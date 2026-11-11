@@ -22,7 +22,7 @@ find_package(Eigen3 REQUIRED)
 find_package(GTSAM REQUIRED)
 
 # The descriptor and the place lookup come from the repository's C++ core.
-set(REFEREE_CORE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../cpp/referee"
+set(REFEREE_CORE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../cpp"
     CACHE PATH "Path to the referee C++ core")
 if(NOT EXISTS "${REFEREE_CORE_DIR}/CMakeLists.txt")
   message(FATAL_ERROR "referee core not found at ${REFEREE_CORE_DIR}")

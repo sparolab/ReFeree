@@ -24,7 +24,7 @@ find_package(OpenMP)
 
 # The descriptor itself comes from the repository's C++ core, which knows
 # nothing about ROS.
-set(REFEREE_CORE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../cpp/referee"
+set(REFEREE_CORE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../cpp"
     CACHE PATH "Path to the referee C++ core")
 if(NOT EXISTS "${REFEREE_CORE_DIR}/CMakeLists.txt")
   message(FATAL_ERROR "referee core not found at ${REFEREE_CORE_DIR}")

@@ -1,5 +1,5 @@
 """Place lookup over ReFeree descriptors. Mirrors
-``cpp/referee/include/referee/retrieval.hpp``.
+``cpp/include/referee/retrieval.hpp``.
 
 The range descriptor is rotation invariant, so finding a place is a similarity
 search over it. The angular descriptor is not, and that is the point: the

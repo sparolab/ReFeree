@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "referee-radar"
+dynamic = ["version"]
+description = "ReFeree: radar place recognition from features and free space (IEEE RA-L 2024)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "BSD-3-Clause" }
+authors = [{ name = "Hogyun Kim", email = "hg.kim@inha.edu" }, { name = "Byunghee Choi" }]
+keywords = ["radar", "fmcw radar", "place recognition", "loop closure", "global descriptor", "slam",
+            "radar slam", "navtech", "mulran", "oxford radar robotcar", "robotics"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+]
+dependencies = ["numpy", "scipy", "opencv-python-headless"]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[project.urls]
+Homepage = "https://github.com/sparolab/ReFeree"
+"Project page" = "https://sites.google.com/view/referee-radar"
+Paper = "https://arxiv.org/abs/2410.01325"
+Issues = "https://github.com/sparolab/ReFeree/issues"
+
+[tool.setuptools]
+package-dir = { "" = "python" }
+packages = ["referee"]
+
+[tool.setuptools.dynamic]
+version = { attr = "referee.__version__" }

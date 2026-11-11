@@ -1,4 +1,4 @@
-"""The ReFeree descriptors. Mirrors ``cpp/referee/include/referee/descriptor.hpp``.
+"""The ReFeree descriptors. Mirrors ``cpp/include/referee/descriptor.hpp``.
 
 Both describe the free space around a place rather than the things in it: the
 space a radar reports nothing in is as characteristic as what it reports, and is

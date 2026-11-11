@@ -1,6 +1,6 @@
 """Feature extraction after Cen and Newman, ICRA 2018.
 
-A faithful port of ``cpp/referee/src/features.cpp``, which is the code the RA-L
+A faithful port of ``cpp/src/features.cpp``, which is the code the RA-L
 results were produced with. Two of its details are surprising and are kept
 deliberately, because changing either changes published numbers:
 

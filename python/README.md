@@ -1,6 +1,6 @@
 # referee (Python)
 
-Mirrors the C++ core under `cpp/referee` module for module, and is checked
+Mirrors the C++ core under `cpp/` module for module, and is checked
 against the descriptors the published implementation produced. The C++ side is
 what the ROS 2 nodes use; this side is for reproducing the paper and for trying
 things out.

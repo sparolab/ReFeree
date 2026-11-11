@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Match a query scan against a handful of candidates and recover the yaw.
 
-    demo.py [scan_dir]      default: ../cpp/referee/examples
+    demo.py [scan_dir]      default: ../cpp/examples
 
 Replaces the original test.py. Its heading estimation never applied the shift it
 was looping over - `shift_index` went unused, so every iteration scored the same
@@ -29,7 +29,7 @@ def describe(path: str):
 
 def main() -> int:
     scan_dir = Path(sys.argv[1]) if len(sys.argv) > 1 \
-        else Path(__file__).resolve().parents[2] / "cpp/referee/examples"
+        else Path(__file__).resolve().parents[2] / "cpp/examples"
 
     names = referee.radar_file_names(str(scan_dir))
     if len(names) < 2:

@@ -15,8 +15,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "python"))
 import referee  # noqa: E402
 
-EXAMPLES = ROOT / "cpp/referee/examples"
-REFERENCE = ROOT / "cpp/referee/tools/reference/published_descriptors.txt"
+EXAMPLES = ROOT / "cpp/examples"
+REFERENCE = ROOT / "cpp/tools/reference/published_descriptors.txt"
 
 
 def load_reference():

@@ -1,5 +1,5 @@
 """Reading Navtech polar radar scans and turning detections back into a polar
-image. Mirrors ``cpp/referee/include/referee/radar_utils.hpp``.
+image. Mirrors ``cpp/include/referee/radar_utils.hpp``.
 """
 
 from __future__ import annotations
