@@ -1,7 +1,7 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="fig/logo_dark.svg" />
-    <img src="fig/logo_light.svg" alt="ReFeree: Radar Localization using Feature and Free Space" width="560" />
+    <img src="fig/logo_light.svg" alt="ReFeree: Radar Localization using Free Space" width="560" />
   </picture>
   <br />
   <a href="https://github.com/sparolab/ReFeree/tree/main/cpp"><img src="https://img.shields.io/badge/-C++-blue?logo=cplusplus" /></a>

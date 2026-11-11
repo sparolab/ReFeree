@@ -25,6 +25,6 @@
   <path d="M90.5 67.2 L74.0 38.6 A42 42 0 0 1 95.0 33.0 L95.0 66.0 A9 9 0 0 0 90.5 67.2 Z" fill="#00897B" opacity="0.9" stroke="#ffffff" stroke-width="2"/>
   <path d="M74.0 38.6 L63.0 19.6 A64 64 0 0 1 95.0 11.0 L95.0 33.0 A42 42 0 0 0 74.0 38.6 Z" fill="#59636e" opacity="0.12" stroke="#ffffff" stroke-width="2"/>
   <circle cx="95" cy="75" r="6" fill="#1f2328"/>
-  <text x="205" y="88" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="72" font-weight="800" letter-spacing="-1" fill="#1f2328"><tspan fill="#3F51B5">Re</tspan><tspan fill="#D81B60">Fe</tspan><tspan fill="#00897B">ree</tspan></text>
-  <text x="208" y="126" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="21" font-weight="500" fill="#59636e"><tspan fill="#3F51B5" font-weight="800">R</tspan>adar Localization using <tspan fill="#D81B60" font-weight="800">Fe</tspan>ature and <tspan fill="#00897B" font-weight="800">Free</tspan> Space</text>
+  <text x="205" y="88" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="72" font-weight="800" letter-spacing="-1" fill="#1f2328"><tspan fill="#3F51B5">Re</tspan><tspan fill="#00897B">Feree</tspan></text>
+  <text x="208" y="126" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="21" font-weight="500" fill="#59636e"><tspan fill="#3F51B5" font-weight="800">R</tspan>adar Localization using <tspan fill="#00897B" font-weight="800">Free</tspan> Space</text>
 </svg>
