@@ -62,9 +62,10 @@ class PoseGraphNode : public rclcpp::Node {
     loop_period_ms_ = declare_parameter<int>("loop_detection_period_ms", 100);
     registration_.fitness_threshold = declare_parameter<double>("loop_fitness_threshold", 200.0);
     registration_.use_descriptor_yaw = declare_parameter<bool>("use_descriptor_yaw", true);
-    // Off by default: the published pipeline has no such gate, and with the
-    // rest of it correct it does not need one.
-    registration_.max_translation = declare_parameter<double>("loop_max_translation", 0.0);
+    // A loop is two keyframes at the same place, so after registration they cannot be metres apart: this
+    // geometric gate is what rejects a wrong match (see loop_registration.hpp). The published pipeline had
+    // none; 0 turns it off.
+    registration_.max_translation = declare_parameter<double>("loop_max_translation", 3.0);
     loop_noise_score_ = declare_parameter<double>("loop_noise_score", 0.5);
     // The published value was 0, which leaves the query itself in the search
     // and makes it its own best match at a cosine of 1. The original did not

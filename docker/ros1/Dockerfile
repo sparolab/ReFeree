@@ -11,11 +11,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3-catkin-tools ros-noetic-gtsam ros-noetic-pcl-ros ros-noetic-cv-bridge ros-noetic-image-transport \
     && rm -rf /var/lib/apt/lists/*
 COPY cpp /referee/cpp
-COPY applications/slam/ros1 /referee/applications/slam/ros1
+COPY applications/slam /referee/applications/slam
 WORKDIR /referee/ws
 RUN source /opt/ros/noetic/setup.bash && catkin init && \
     catkin config --source-space /referee/applications/slam/ros1 --cmake-args -DCMAKE_BUILD_TYPE=Release && \
-    catkin build -j8 --no-status nano_gicp && catkin build -j8 --no-status
+    catkin build -j8 --no-status
 RUN echo "source /referee/ws/devel/setup.bash" >> /root/.bashrc
 ENTRYPOINT ["/bin/bash", "-c", "source /referee/ws/devel/setup.bash && exec \"$@\"", "--"]
 CMD ["bash"]

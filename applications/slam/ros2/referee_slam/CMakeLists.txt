@@ -16,7 +16,7 @@ find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(referee_interfaces REQUIRED)
-find_package(nano_gicp REQUIRED)
+find_package(OpenMP)
 find_package(PCL REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(GTSAM REQUIRED)
@@ -29,23 +29,29 @@ if(NOT EXISTS "${REFEREE_CORE_DIR}/CMakeLists.txt")
 endif()
 add_subdirectory("${REFEREE_CORE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/referee_core" EXCLUDE_FROM_ALL)
 
-add_executable(pose_graph_node
-  src/pose_graph_node.cpp
-  src/loop_registration.cpp
-  src/graph_io.cpp)
-target_include_directories(pose_graph_node PRIVATE
-  include ${PCL_INCLUDE_DIRS} ${GTSAM_INCLUDE_DIR})
-target_link_libraries(pose_graph_node referee gtsam ${PCL_LIBRARIES} Eigen3::Eigen)
+# The ROS-free back end shared with the ROS 1 package (applications/slam/common): keyframe store, loop
+# registration (nano-GICP, vendored), graph files.
+set(COMMON "${CMAKE_CURRENT_SOURCE_DIR}/../../common")
+add_library(referee_slam_core STATIC
+  ${COMMON}/src/loop_registration.cpp ${COMMON}/src/graph_io.cpp
+  ${COMMON}/src/nano_gicp.cc ${COMMON}/src/nanoflann.cc)
+target_include_directories(referee_slam_core PUBLIC ${COMMON}/include ${PCL_INCLUDE_DIRS} ${GTSAM_INCLUDE_DIR})
+target_link_libraries(referee_slam_core PUBLIC referee gtsam ${PCL_LIBRARIES} Eigen3::Eigen)
+if(OpenMP_CXX_FOUND)
+  target_link_libraries(referee_slam_core PUBLIC OpenMP::OpenMP_CXX)
+endif()
+
+add_executable(pose_graph_node src/pose_graph_node.cpp)
+target_link_libraries(pose_graph_node referee_slam_core)
 ament_target_dependencies(pose_graph_node
   rclcpp nav_msgs sensor_msgs geometry_msgs tf2 tf2_geometry_msgs pcl_conversions
-  referee_interfaces nano_gicp)
+  referee_interfaces)
 
-add_executable(reoptimize src/reoptimize.cpp src/graph_io.cpp)
-target_include_directories(reoptimize PRIVATE include ${GTSAM_INCLUDE_DIR})
+add_executable(reoptimize ${COMMON}/src/reoptimize.cpp ${COMMON}/src/graph_io.cpp)
+target_include_directories(reoptimize PRIVATE ${COMMON}/include ${GTSAM_INCLUDE_DIR})
 target_link_libraries(reoptimize gtsam Eigen3::Eigen)
 
 install(TARGETS pose_graph_node reoptimize DESTINATION lib/${PROJECT_NAME})
-install(DIRECTORY include/ DESTINATION include)
 foreach(dir launch config)
   if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${dir}")
     install(DIRECTORY ${dir} DESTINATION share/${PROJECT_NAME})

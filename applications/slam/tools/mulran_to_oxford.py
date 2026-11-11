@@ -6,7 +6,8 @@
 Oxford layout: one row per azimuth, 11 metadata bytes (int64 timestamp, uint16 encoder count out of 5600,
 uint8 valid = 255) then the range bins. MulRan scans carry no per-azimuth time, so it is spread linearly
 over one revolution (--period, 4 Hz for the CIR204 of MulRan) from the file name's time, in the file name's
-unit (nanoseconds for MulRan). The azimuth order is reversed to match the Oxford encoder direction.
+unit (nanoseconds for MulRan). The azimuth order is reversed to match the Oxford encoder direction; the
+per-azimuth times move with their rows.
 """
 import argparse
 from pathlib import Path
@@ -34,7 +35,8 @@ def main() -> None:
         n_az, n_rng = img.shape
         t0 = int(f.stem)
         out = np.zeros((n_az, 11 + n_rng), np.uint8)
-        stamps = (t0 + np.arange(n_az) * (a.period * 1e9 / n_az)).astype(np.int64)
+        # each row keeps the time it was measured at: after the reversal, row r is MulRan's azimuth n - 1 - r
+        stamps = (t0 + np.arange(n_az)[::-1] * (a.period * 1e9 / n_az)).astype(np.int64)
         out[:, 0:8] = stamps.view(np.uint8).reshape(n_az, 8)
         out[:, 8:10] = np.round(np.arange(n_az) * 5600 / n_az).astype(np.uint16).view(np.uint8).reshape(n_az, 2)
         out[:, 10] = 255

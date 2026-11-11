@@ -105,28 +105,30 @@ ______________________________________________________________________
 
 ```
 applications/slam/
-├── ros1/   referee_radar_slam: Yeti radar odometry + ReFeree loops + ICP + iSAM2 (the former ReFeree-Radar-SLAM)
-└── ros2/   referee_odometry + referee_slam: the same pipeline on ROS 2, GTSAM 4.2
+├── common/ ROS-free: radar odometry (Yeti: Cen features, motion-distorted RANSAC), keyframe store,
+│           ReFeree loop search, nano-GICP verification, graph files
+├── ros1/   referee_radar_slam: odometry_node + pose_graph_node on ROS 1 (replaces ReFeree-Radar-SLAM)
+├── ros2/   referee_odometry + referee_slam: the same two nodes on ROS 2
+└── tools/  MulRan converter, evaluation against the ground truth
 ```
 
 Both read a sequence folder (`<sequence>/polar/*.png`) and write the keyframe poses (odometry and optimized, KITTI format) and the pose graph.
 
 On MulRan `KAIST_03` (6.2 km, 3,461 scans, `dataset:=mulran`), against the MulRan ground truth with a rigid SE(2) alignment (rotation and translation, **no scale**):
 
-| | keyframes | loop edges (within 10 m in the ground truth) | odometry ATE RMSE | SLAM ATE RMSE (mean / max) |
+| | keyframes | loop edges (true: within 10 m in the ground truth) | odometry ATE RMSE (mean) | SLAM ATE RMSE (mean / max) |
 | --- | ---: | ---: | ---: | ---: |
-| ROS 2 (`referee_slam`) | 3,459 | 2,550 (1,554) | 146.7 m | **5.7 m** (4.3 / 43.4 m) |
-| ROS 1 (`referee_radar_slam`) | 3,458 | 464 (243) | 185.8 m | 115.1 m (97.4 / 331.8 m) |
+| ROS 2 (`referee_slam`) | 3,459 | 1,292 (1,252) | 80.4 m (71.7 m) | **6.2 m** (5.5 / 12.7 m) |
+| ROS 1 (`referee_radar_slam`) | 3,459 | 1,387 (1,350) | 80.4 m (71.7 m) | **6.2 m** (5.5 / 12.7 m) |
 
-The ROS 1 back end is the released ReFeree-Radar-SLAM one (cosine threshold 0.9, the newest keyframe queried at 1 Hz, ICP fitness up to 200): about half of its loops are false and they pull the graph, while the ROS 2 graph absorbs its false loops. MulRan's radar has 0.0596 m per range bin (Oxford's 0.0432, which the released code assumed, shrinks the trajectory by 1.38); `dataset:=mulran|oxford` sets it. With a scale fit the ROS 2 SLAM error is 5.0 m (scale 0.991), i.e. the trajectory is metric. Sessions and the evaluation: [applications/slam/tools](applications/slam/tools).
+Both ROS versions run the same odometry and back end (`applications/slam/common`), so they agree to a few centimetres. A loop is verified twice: nano-GICP seeded with the yaw of the angle descriptor (fitness <= 200), and the residual translation it leaves (<= 3 m: two keyframes at one place cannot be farther apart); 2.5 % of the loops kept are wrong (more than 20 m apart) and a Cauchy kernel absorbs them. The odometry keeps the previous motion when fewer than 10 matches support a scan-to-scan motion (4 scans on KAIST_03). MulRan's radar has 0.0596 m per range bin (Oxford's 0.0432, which the released code assumed, shrinks the trajectory by 1.38); `dataset:=mulran|oxford` sets it. With a scale fit the SLAM error is 4.2 m (scale 0.985). Sessions and the evaluation: [applications/slam/tools](applications/slam/tools).
 
-<p align="center"><img src="fig/kaist03_trajectory.png" alt="MulRan KAIST_03, ROS 2: radar odometry drifts (rigid ATE RMSE 146.7 m), ReFeree loop closing keeps the trajectory on the ground truth (5.7 m)" width="95%" /></p>
+<p align="center"><img src="fig/kaist03_trajectory.png" alt="MulRan KAIST_03, ROS 2: radar odometry drifts (rigid ATE RMSE 80.4 m), ReFeree loop closing keeps the trajectory on the ground truth (6.2 m)" width="95%" /></p>
 
 ### ROS 1 (Noetic)
 
 ```bash
-cd ~/catkin_ws/src && ln -s /path/to/ReFeree/applications/slam/ros1 referee
-cd .. && catkin build nano_gicp && catkin build
+cd ~/catkin_ws && catkin config --source-space /path/to/ReFeree/applications/slam/ros1 && catkin build
 roslaunch referee_radar_slam referee_radar_slam.launch seq_dir:=/data/KAIST_03/ save_directory:=/data/output/ dataset:=mulran rviz:=true
 ```
 
@@ -173,7 +175,7 @@ ______________________________________________________________________
 
 - [Sarah H. Cen](https://scholar.google.com/citations?user=2BTuWpgAAAAJ&hl=en): the radar feature extraction ReFeree builds on.
 - [Keenan Burnett](https://github.com/keenan-burnett): [radar-to-LiDAR calibration](https://github.com/keenan-burnett/radar_to_lidar_calib) and [Yeti radar odometry](https://github.com/keenan-burnett/yeti_radar_odometry), the ROS 1 odometry (BSD-3-Clause).
-- [Nano-GICP](https://github.com/engcang/nano_gicp) (MIT) and [Navtech-Radar-SLAM](https://github.com/gisbi-kim/navtech-radar-slam), the structure of the ROS 1 SLAM.
+- [Nano-GICP](https://github.com/engcang/nano_gicp) (MIT), the loop verification, and [Navtech-Radar-SLAM](https://github.com/gisbi-kim/navtech-radar-slam), the structure of the SLAM.
 
 ## :mailbox: Contact
 

@@ -1,20 +1,25 @@
-<!-- ReFeree radar SLAM (ROS 1): Yeti odometry publishes keyframes + ReFeree descriptors, the pose graph closes loops.
+<!-- ReFeree radar SLAM (ROS 1): radar odometry publishes keyframes + ReFeree descriptors, the pose graph closes loops.
+     The same nodes, parameters and back end (applications/slam/common) as the ROS 2 launch.
      roslaunch referee_radar_slam referee_radar_slam.launch seq_dir:=/data/KAIST_03/ save_directory:=/data/output/ dataset:=mulran -->
 <launch>
-  <arg name="seq_dir" doc="sequence directory holding polar/ (timestamp-named Navtech PNGs); end with /" />
-  <arg name="save_directory" default="/tmp/referee/" doc="where poses and the graph are written; end with /" />
-  <arg name="keyframe_meter_gap" default="0.0" />
+  <arg name="seq_dir" doc="sequence directory holding polar/ (timestamp-named Navtech PNGs, Oxford layout)" />
+  <arg name="save_directory" default="/tmp/referee/" doc="where poses, times and the graph are written; end with /" />
+  <arg name="keyframe_gap_m" default="0.0" />
   <!-- the radar: mulran (CIR204-H, 0.0596 m per range bin; Boreas also 0.0596) or oxford (CTS350-X, 0.0432 m per bin).
        A wrong value scales the whole trajectory. -->
   <arg name="dataset" default="mulran" />
-  <rosparam command="load" file="$(find referee_radar_slam)/config/$(arg dataset).yaml" />
+  <arg name="scan_period_ms" default="100" />
   <arg name="rviz" default="false" />
-  <param name="seq_dir" type="string" value="$(arg seq_dir)" />
-  <param name="save_directory" type="string" value="$(arg save_directory)" />
-  <param name="keyframe_meter_gap" type="double" value="$(arg keyframe_meter_gap)" />
-  <param name="is_withInitialICP" type="bool" value="true" />
-  <node pkg="referee_radar_slam" type="referee_odometry" name="referee_odometry" output="screen" />
-  <node pkg="referee_radar_slam" type="referee_posegraph" name="referee_posegraph" output="screen" />
+
+  <node pkg="referee_radar_slam" type="pose_graph_node" name="referee_slam" output="screen">
+    <param name="save_directory" value="$(arg save_directory)" />
+    <param name="keyframe_gap_m" value="$(arg keyframe_gap_m)" />
+  </node>
+  <node pkg="referee_radar_slam" type="odometry_node" name="referee_odometry" output="screen">
+    <rosparam command="load" file="$(find referee_radar_slam)/config/$(arg dataset).yaml" />
+    <param name="sequence_dir" value="$(arg seq_dir)" />
+    <param name="scan_period_ms" value="$(arg scan_period_ms)" />
+  </node>
   <node if="$(arg rviz)" launch-prefix="nice" pkg="rviz" type="rviz" name="rviz"
         args="-d $(find referee_radar_slam)/rviz/referee_radar_slam.rviz" />
 </launch>

@@ -16,7 +16,7 @@ You are setting up ReFeree (radar place recognition from features and free space
 git clone https://github.com/sparolab/ReFeree.git && cd ReFeree
 ```
 
-Layout: `cpp/` C++17 core (`referee::referee`: `radar_utils` reader, `features` Cen 2018 extraction, `descriptor` range/angle descriptors, `retrieval` lookup and yaw), `python/referee` the same in Python (`pip install referee-radar`), `applications/slam/ros1` (Yeti odometry + ReFeree + iSAM2), `applications/slam/ros2` (ROS 2 port, GTSAM 4.2), `docker/ros1`, `docker/ros2`.
+Layout: `cpp/` C++17 core (`referee::referee`: `radar_utils` reader, `features` Cen 2018 extraction, `descriptor` range/angle descriptors, `retrieval` lookup and yaw), `python/referee` the same in Python (`pip install referee-radar`), `applications/slam/common` (ROS-free odometry and back end), `applications/slam/ros1` and `applications/slam/ros2` (the same two nodes on each ROS), `applications/slam/tools` (MulRan converter, evaluation), `docker/ros1`, `docker/ros2`.
 
 ## 2. Library
 
@@ -37,7 +37,7 @@ docker build -f docker/ros2/Dockerfile -t referee:humble .     # or docker/ros1/
 docker run --rm referee:humble bash /referee/docker/validate.sh # must end with: all checks passed
 ```
 
-ROS 2 on the host: `colcon build --base-paths applications/slam/ros2` (GTSAM 4.2 and PCL installed). ROS 1: put `applications/slam/ros1` in a catkin workspace, `catkin build nano_gicp && catkin build`.
+ROS 2 on the host: `colcon build --base-paths applications/slam/ros2` (GTSAM 4.2 and PCL installed). ROS 1: `catkin config --source-space applications/slam/ros1 && catkin build` (GTSAM, PCL).
 
 ## 4. Run on MulRan
 
@@ -55,11 +55,11 @@ docker run --rm -v <KAIST_03>:/data/KAIST_03:ro -v ~/referee_results:/data/outpu
 # ROS 1: referee:noetic roslaunch referee_radar_slam referee_radar_slam.launch seq_dir:=/data/KAIST_03/ save_directory:=/data/output/ dataset:=mulran
 ```
 
-Check that `optimized_poses_kitti.txt` and `odom_poses_kitti.txt` (ROS 1: `optimized_poses.txt`, `odom_poses.txt`, `times.txt`, `loops.csv`) were written and that the log reports loops. Score it against the ground truth:
+Check that `optimized_poses_kitti.txt`, `odom_poses_kitti.txt` and `keyframe_times.txt` were written (both ROS versions) and that the log reports loops. Score it against the ground truth:
 
 ```bash
 REFEREE_SCANS=<converted>/KAIST_03/polar MULRAN_GT=<MulRan>/KAIST_03/xypose.csv \
   python3 applications/slam/tools/evaluate_mulran.py ~/referee_results ~/referee_results/session ros2
 ```
 
-On the whole of KAIST_03 (ROS 2) expect about 3,459 keyframes, 2,550 loop edges and a rigid (no-scale) ATE RMSE near 5.7 m for SLAM against 146.7 m for the odometry alone; ROS 1 gives 3,458 keyframes, 464 loops and 115.1 m.
+On the whole of KAIST_03 expect 3,459 keyframes, about 1,300 loop edges and a rigid (no-scale) ATE RMSE near 6.2 m for SLAM against 80.4 m for the odometry alone, on ROS 2 and ROS 1 alike (they share `applications/slam/common`); the odometry log warns that 4 scans kept the previous motion.

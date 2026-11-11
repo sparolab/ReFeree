@@ -16,7 +16,7 @@ Cloud::Ptr rotatedAboutZ(const Cloud::Ptr& cloud, double yaw) {
   rotation(0, 0) = c;  rotation(0, 1) = -s;
   rotation(1, 0) = s;  rotation(1, 1) = c;
 
-  auto out = std::make_shared<Cloud>();
+  Cloud::Ptr out(new Cloud);  // boost::shared_ptr on PCL 1.10 (Noetic), std on 1.12
   pcl::transformPointCloud(*cloud, *out, rotation);
   return out;
 }

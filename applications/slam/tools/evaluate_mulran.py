@@ -15,9 +15,9 @@ raw, out, kind = sys.argv[1], sys.argv[2], sys.argv[3]
 SCANS = os.environ.get('REFEREE_SCANS', 'KAIST_03/polar')  # the converted polar/ folder
 GT = os.environ.get('MULRAN_GT', 'KAIST_03/xypose.csv')  # MulRan ground truth: t [ns], x, y, ...
 os.makedirs(out, exist_ok=True)
-if kind == 'ros2':
+if os.path.exists(os.path.join(raw, 'keyframe_times.txt')):   # both ROS versions (v2)
     P, O, T = 'optimized_poses_kitti.txt', 'odom_poses_kitti.txt', 'keyframe_times.txt'
-else:
+else:                                                          # the released ROS 1 back end
     P, O, T = 'optimized_poses.txt', 'odom_poses.txt', 'times.txt'
 opt = np.loadtxt(os.path.join(raw, P), ndmin=2)
 odo = np.loadtxt(os.path.join(raw, O), ndmin=2)

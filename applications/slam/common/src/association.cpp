@@ -1,4 +1,5 @@
-#include <association.hpp>
+#include "referee_odometry/association.hpp"
+#include <cmath>
 #include <complex>
 
 static Eigen::Matrix3d roll(double r) {
@@ -447,26 +448,40 @@ void MotionDistortedRansac::getTransform(double delta_t, Eigen::MatrixXd &Tf) {
 }
 
 double MotionDistortedRansac::computeModel() {
-    int max_inliers = 0;
-    int subset_size = 2;
+    // Adaptive RANSAC: draw minimal subsets until, at the best inlier ratio w found so far, the chance of
+    // never having drawn an all-inlier pair falls below 1 - confidence, i.e. N = log(1 - p) / log(1 - w^2),
+    // capped at `iterations`. The published code stopped after a fixed 100 draws, which is enough when a
+    // quarter of the matches are right (N ~ 110) but not when only a few percent are: then the best of 100
+    // random pairs is supported by two or three matches and its motion is arbitrary (a 32 m, 33 deg step on
+    // MulRan KAIST_03). How many matches support the result is kept (num_inliers()) so the caller can tell
+    // an estimate from a failure.
+    const int n = p1bar.cols();
+    const int subset_size = 2;
+    max_inliers = 0;
+    if (n < subset_size) return 0.0;
+    double needed = iterations;
     int i = 0;
-    for (i = 0; i < iterations; ++i) {
-        std::vector<int> subset = random_subset(p1bar.cols(), subset_size);
+    for (i = 0; i < iterations && i < needed; ++i) {
+        std::vector<int> subset = random_subset(n, subset_size);
         Eigen::VectorXd wbar = Eigen::VectorXd::Zero(6, 1);
         get_motion_parameters(subset, wbar);
         int inliers = getNumInliers(wbar);
         if (inliers > max_inliers) {
             max_inliers = inliers;
             w_best = wbar;
+            const double w = double(inliers) / double(n);
+            if (w >= 1.0) break;
+            needed = std::log(1.0 - confidence) / std::log(1.0 - std::pow(w, subset_size));
         }
-        if (double(inliers) / double(p1bar.cols()) > inlier_ratio)
+        if (double(inliers) / double(n) > inlier_ratio)
             break;
     }
     // Refine transformation using the inlier set
     std::vector<int> best_inliers;
     getInliers(w_best, best_inliers);
     get_motion_parameters(best_inliers, w_best);
-    return double(best_inliers.size()) / double(p1bar.cols());
+    max_inliers = static_cast<int>(best_inliers.size());
+    return double(best_inliers.size()) / double(n);
 }
 
 // gt vector: GPSTime,x,y,z,vel_x,vel_y,vel_z,roll,pitch,heading,ang_vel_z

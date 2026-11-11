@@ -31,15 +31,15 @@ if(NOT EXISTS "${REFEREE_CORE_DIR}/CMakeLists.txt")
 endif()
 add_subdirectory("${REFEREE_CORE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/referee_core" EXCLUDE_FROM_ALL)
 
-# Estimation, vendored from yeti_radar_odometry. No ROS API inside.
-add_library(referee_odometry_core
-  src/radar_utils.cpp
-  src/features.cpp
-  src/association.cpp
-  src/key_operation.cpp)
-target_include_directories(referee_odometry_core PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>
-  ${PCL_INCLUDE_DIRS})
+# Estimation, vendored from yeti_radar_odometry, shared with the ROS 1 package (applications/slam/common).
+# No ROS API inside.
+set(COMMON "${CMAKE_CURRENT_SOURCE_DIR}/../../common")
+add_library(referee_odometry_core STATIC
+  ${COMMON}/src/radar_utils.cpp
+  ${COMMON}/src/features.cpp
+  ${COMMON}/src/association.cpp
+  ${COMMON}/src/key_operation.cpp)
+target_include_directories(referee_odometry_core PUBLIC ${COMMON}/include ${PCL_INCLUDE_DIRS})
 target_link_libraries(referee_odometry_core PUBLIC
   ${OpenCV_LIBS} ${PCL_LIBRARIES} Eigen3::Eigen Boost::system Boost::filesystem)
 if(OpenMP_CXX_FOUND)
@@ -53,7 +53,6 @@ ament_target_dependencies(odometry_node
   referee_interfaces)
 
 install(TARGETS odometry_node DESTINATION lib/${PROJECT_NAME})
-install(DIRECTORY include/ DESTINATION include)
 install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/launch")
   install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})

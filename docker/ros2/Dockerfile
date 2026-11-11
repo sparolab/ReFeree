@@ -20,12 +20,12 @@ RUN git clone --depth 1 --branch 4.2 https://github.com/borglab/gtsam.git /opt/g
 
 COPY cpp /referee/cpp
 COPY python /referee/python
-COPY applications/slam/ros2 /referee/applications/slam/ros2
+COPY applications/slam /referee/applications/slam
 COPY docker/validate.sh /referee/docker/validate.sh
 # the core and its checks
 RUN cmake -S /referee/cpp -B /referee/cpp/build -DCMAKE_BUILD_TYPE=Release && cmake --build /referee/cpp/build -j8 && \
     ctest --test-dir /referee/cpp/build --output-on-failure
-# the ROS 2 workspace (finds the core through ../../../../cpp)
+# the ROS 2 workspace (finds cpp/ and applications/slam/common by relative path)
 WORKDIR /referee/ws
 RUN source /opt/ros/humble/setup.bash && \
     colcon build --base-paths /referee/applications/slam/ros2 --cmake-args -DCMAKE_BUILD_TYPE=Release \

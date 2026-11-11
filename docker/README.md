@@ -4,8 +4,8 @@ Two images, both built from the repository root:
 
 | image | Dockerfile | contents |
 | --- | --- | --- |
-| `referee:noetic` | `docker/ros1/Dockerfile` | ROS 1 Noetic: the C++ core + `referee_radar_slam` (Yeti odometry, ReFeree, iSAM2) + `nano_gicp` |
-| `referee:humble` | `docker/ros2/Dockerfile` | ROS 2 Humble: the C++ core (tests run at build), GTSAM 4.2, `referee_odometry`, `referee_slam`, `nano_gicp`, and the Python package's tests |
+| `referee:noetic` | `docker/ros1/Dockerfile` | ROS 1 Noetic: the C++ core + `referee_radar_slam` (odometry and pose graph from `applications/slam/common`) |
+| `referee:humble` | `docker/ros2/Dockerfile` | ROS 2 Humble: the C++ core (tests run at build), GTSAM 4.2, `referee_odometry`, `referee_slam` (from `applications/slam/common`), and the Python package's tests |
 
 ```bash
 docker build -f docker/ros1/Dockerfile -t referee:noetic .

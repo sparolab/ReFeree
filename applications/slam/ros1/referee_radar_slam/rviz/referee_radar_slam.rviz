@@ -65,7 +65,7 @@ Visualization Manager:
         Shaft Length: 1
         Shaft Radius: 0.05000000074505806
         Value: Axes
-      Topic: /yeti_odom
+      Topic: /odom
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -89,7 +89,7 @@ Visualization Manager:
       Radius: 0.30000001192092896
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /aft_pgo_path
+      Topic: /path
       Unreliable: false
       Value: true
     - Alpha: 0
@@ -115,7 +115,7 @@ Visualization Manager:
       Size (Pixels): 3
       Size (m): 0.009999999776482582
       Style: Points
-      Topic: /yeti_cloud_global
+      Topic: /cloud_global
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
@@ -143,7 +143,7 @@ Visualization Manager:
       Size (Pixels): 3
       Size (m): 0.009999999776482582
       Style: Points
-      Topic: /aft_pgo_map
+      Topic: /cloud_global
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
@@ -152,7 +152,7 @@ Visualization Manager:
   Global Options:
     Background Color: 0; 0; 0
     Default Light: true
-    Fixed Frame: camera_init
+    Fixed Frame: odom
     Frame Rate: 30
   Name: root
   Tools:

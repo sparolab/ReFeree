@@ -128,8 +128,9 @@ private:
 class MotionDistortedRansac {
 public:
     MotionDistortedRansac(Eigen::MatrixXd p1, Eigen::MatrixXd p2, std::vector<int64_t> t1, std::vector<int64_t> t2,
-        double tolerance_, double inlier_ratio_, int iterations_) : tolerance(tolerance_),
-        inlier_ratio(inlier_ratio_), iterations(iterations_) {
+        double tolerance_, double inlier_ratio_, int iterations_,
+        double time_scale_ = 1.0e-6) : tolerance(tolerance_),
+        inlier_ratio(inlier_ratio_), iterations(iterations_), time_scale(time_scale_) {
         const int dim = p1.rows();
         assert(p1.cols() == p2.cols() && p1.rows() == p2.rows() && p1.cols() >= p1.rows() && (dim == 2 || dim == 3));
         p1bar = Eigen::MatrixXd::Zero(4, p1.cols());
@@ -144,10 +145,17 @@ public:
             p2bar.block(0, 0, 3, p2.cols()) = p2;
         }
         R_pol << pow(0.25, 2), 0, 0, 0, 0, pow(0.0157, 2), 0, 0, 0, 0, 1, 0, 0, 0, 0, 1;
+        // Point timestamps come straight from the radar header, whose unit
+        // varies by dataset: Oxford writes microseconds, MulRan nanoseconds.
+        // The published implementation divided by 1e6 unconditionally here and
+        // in the caller's frame interval, so on MulRan both came out a thousand
+        // times too large and the error cancelled in w_best * delta_t. It only
+        // cancels while both stay wrong together, so the scale is set once, by
+        // the caller, and applied in both places.
         delta_ts = std::vector<double>(p1.cols(), 0.0);
         for (uint i = 0; i < p1bar.cols(); ++i) {
             int64_t delta_t = t2[i] - t1[i];
-            delta_ts[i] = double(delta_t) / 1000000.0;
+            delta_ts[i] = double(delta_t) * time_scale;
             if (delta_ts[i] > max_delta_t) {
                 max_delta_t = delta_ts[i];
             }
@@ -169,6 +177,10 @@ public:
     void getTransform(double delta_t, Eigen::MatrixXd &Tf);
     void getMotion(Eigen::VectorXd &w) {w = w_best;}
     void setDopplerParameter(double beta_) {beta = beta_;}
+    // Probability that the adaptive RANSAC has drawn at least one all-inlier subset before it stops.
+    void setConfidence(double p) {confidence = p;}
+    // Matches that support the final motion (after computeModel()).
+    int num_inliers() const {return max_inliers;}
 
     /*!
        \brief Computes the ego-motion vector that best aligns the two pointclouds
@@ -183,6 +195,8 @@ public:
 private:
     Eigen::MatrixXd p1bar, p2bar;
     std::vector<double> delta_ts;
+    // Seconds per unit of the raw point timestamps; see the constructor.
+    double time_scale;
     double tolerance = 0.05;
     double inlier_ratio = 0.9;
     int iterations = 40;
@@ -191,6 +205,8 @@ private:
     double error_converge = 0.01;
     int dim = 2;
     double beta = -0.049;  // beta = (f_t / (df / dt))
+    double confidence = 0.999;
+    int max_inliers = 0;
     double r_observable_sq = 0.0625;
     bool doppler = false;
     int num_transforms = 21;

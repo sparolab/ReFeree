@@ -94,7 +94,13 @@ class RadarOdometryNode : public rclcpp::Node {
     nndr_ = declare_parameter<double>("orb_nndr", 0.80);
     ransac_threshold_ = declare_parameter<double>("ransac_threshold", 0.35);
     inlier_ratio_ = declare_parameter<double>("ransac_inlier_ratio", 0.90);
-    max_iterations_ = declare_parameter<int>("ransac_max_iterations", 100);
+    // Adaptive RANSAC: draws until the confidence is reached, at most this many (the published code
+    // always drew 100, too few when only a few percent of the matches are right).
+    max_iterations_ = declare_parameter<int>("ransac_max_iterations", 2000);
+    ransac_confidence_ = declare_parameter<double>("ransac_confidence", 0.999);
+    // A motion supported by fewer matches than this is a failed match, not an estimate: the previous
+    // motion is kept for that scan (constant velocity) and a warning is printed.
+    min_inliers_ = declare_parameter<int>("odometry_min_inliers", 10);
     max_gn_iterations_ = declare_parameter<int>("mdransac_max_gn_iterations", 10);
     doppler_beta_ = declare_parameter<double>("doppler_beta", 0.049);
     // The published implementation slept 100 ms per scan so the pose-graph node
@@ -137,6 +143,8 @@ class RadarOdometryNode : public rclcpp::Node {
     auto matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::BRUTEFORCE_HAMMING);
 
     Eigen::MatrixXd pose = Eigen::MatrixXd::Identity(4, 4);
+    Eigen::MatrixXd previous_motion;  // last accepted scan-to-scan motion
+    int failures = 0;
     cv::Mat previous_image, current_image, previous_desc, current_desc;
     std::vector<cv::KeyPoint> previous_kp, current_kp;
     Eigen::MatrixXd previous_targets, current_targets;
@@ -177,13 +185,22 @@ class RadarOdometryNode : public rclcpp::Node {
 
       if (i == 0) continue;
 
-      const Eigen::MatrixXd motion =
+      int support = 0, matches = 0;
+      Eigen::MatrixXd motion =
           estimateMotion(matcher, previous_desc, current_desc, previous_targets, current_targets,
                          previous_times, current_times,
                          (epochNanosecondsFromFileName(scans[i + 1]) -
                           epochNanosecondsFromFileName(scans[i])) / 1e9,
                          headerTimeScale(power_stamps),
-                         static_cast<int>(i));
+                         static_cast<int>(i), &support, &matches);
+      if (support < min_inliers_) {
+        ++failures;
+        RCLCPP_WARN(get_logger(), "scan %zu (%s): the motion is supported by %d of %d matches; keeping the previous "
+                    "motion (constant velocity)", i, scans[i].c_str(), support, matches);
+        motion = previous_motion.size() ? previous_motion : Eigen::MatrixXd::Identity(4, 4);
+      } else {
+        previous_motion = motion;
+      }
       pose = pose * motion;
 
       publishPose(pose, stamp);
@@ -192,7 +209,7 @@ class RadarOdometryNode : public rclcpp::Node {
       if (period_ms_ > 0)
         std::this_thread::sleep_for(std::chrono::milliseconds(period_ms_));
     }
-    RCLCPP_INFO(get_logger(), "sequence finished");
+    RCLCPP_INFO(get_logger(), "sequence finished (%d scan(s) kept the previous motion)", failures);
   }
 
   // Motion-distorted RANSAC with Doppler correction, which is what the
@@ -203,7 +220,7 @@ class RadarOdometryNode : public rclcpp::Node {
                                  const Eigen::MatrixXd& targets2,
                                  const std::vector<int64_t>& times1,
                                  const std::vector<int64_t>& times2, double delta_t,
-                                 double time_scale, int seed) {
+                                 double time_scale, int seed, int* support, int* matches) {
     std::vector<std::vector<cv::DMatch>> knn;
     matcher->knnMatch(desc1, desc2, knn, 2);
 
@@ -228,8 +245,11 @@ class RadarOdometryNode : public rclcpp::Node {
     mdransac.setMaxGNIterations(max_gn_iterations_);
     mdransac.correctForDoppler(true);
     mdransac.setDopplerParameter(doppler_beta_);
+    mdransac.setConfidence(ransac_confidence_);
     std::srand(seed);
     mdransac.computeModel();
+    *support = mdransac.num_inliers();
+    *matches = static_cast<int>(good.size());
 
     Eigen::MatrixXd transform = Eigen::MatrixXd::Zero(4, 4);
     mdransac.getTransform(delta_t, transform);
@@ -303,6 +323,8 @@ class RadarOdometryNode : public rclcpp::Node {
   int navtech_model_ = CIR204;
   double radar_resolution_, cart_resolution_, zq_, nndr_, ransac_threshold_, inlier_ratio_,
       doppler_beta_;
+  int min_inliers_ = 10;
+  double ransac_confidence_ = 0.999;
 
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr local_cloud_pub_, global_cloud_pub_;
