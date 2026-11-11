@@ -54,7 +54,7 @@ ______________________________________________________________________
 
 - **Library**: Python 3.9+ (NumPy, SciPy, OpenCV), or C++17 with OpenCV and Eigen. Ubuntu and macOS.
 - **SLAM**: ROS 1 Noetic (Ubuntu 20.04) or ROS 2 Humble (Ubuntu 22.04), with GTSAM and PCL; or just Docker.
-- **Data**: Navtech polar scans in the Oxford layout (one row per azimuth: 8-byte timestamp, 2-byte encoder, 1-byte valid flag, then the range bins), as `<sequence>/polar/<timestamp>.png`. [MulRan](https://sites.google.com/view/mulran-pr), [Oxford Radar RobotCar](https://oxford-robotics-institute.github.io/radar-robotcar-dataset/) and [Boreas](https://www.boreas.utias.utoronto.ca/) work.
+- **Data**: Navtech polar scans in the Oxford layout (one row per azimuth: 8-byte timestamp, 2-byte encoder, 1-byte valid flag, then the range bins), as `<sequence>/polar/<timestamp>.png`; MulRan's own `polar/` converts with [`applications/slam/tools/mulran_to_oxford.py`](applications/slam/tools/mulran_to_oxford.py). [MulRan](https://sites.google.com/view/mulran-pr), [Oxford Radar RobotCar](https://oxford-robotics-institute.github.io/radar-robotcar-dataset/) and [Boreas](https://www.boreas.utias.utoronto.ca/) work.
 
 ## :hammer_and_wrench: Installation
 
@@ -111,23 +111,30 @@ applications/slam/
 
 Both read a sequence folder (`<sequence>/polar/*.png`) and write the keyframe poses (odometry and optimized, KITTI format) and the pose graph.
 
-On MulRan `KAIST_03` (ROS 2): 3,395 keyframes and 2,171 loops. Odometry alone drifts to 98.3 m; with ReFeree closing loops the error stays near 6 m over the whole 6.2 km route.
+On MulRan `KAIST_03` (6.2 km, 3,461 scans, `dataset:=mulran`), against the MulRan ground truth with a rigid SE(2) alignment (rotation and translation, **no scale**):
 
-<p align="center"><img src="fig/kaist03_trajectory.png" alt="MulRan KAIST_03: radar odometry drifts, ReFeree loop closing keeps the trajectory on the ground truth" width="90%" /></p>
+| | keyframes | loop edges (within 10 m in the ground truth) | odometry ATE RMSE | SLAM ATE RMSE (mean / max) |
+| --- | ---: | ---: | ---: | ---: |
+| ROS 2 (`referee_slam`) | 3,459 | 2,550 (1,554) | 146.7 m | **5.7 m** (4.3 / 43.4 m) |
+| ROS 1 (`referee_radar_slam`) | 3,458 | 464 (243) | 185.8 m | 115.1 m (97.4 / 331.8 m) |
+
+The ROS 1 back end is the released ReFeree-Radar-SLAM one (cosine threshold 0.9, the newest keyframe queried at 1 Hz, ICP fitness up to 200): about half of its loops are false and they pull the graph, while the ROS 2 graph absorbs its false loops. MulRan's radar has 0.0596 m per range bin (Oxford's 0.0432, which the released code assumed, shrinks the trajectory by 1.38); `dataset:=mulran|oxford` sets it. With a scale fit the ROS 2 SLAM error is 5.0 m (scale 0.991), i.e. the trajectory is metric. Sessions and the evaluation: [applications/slam/tools](applications/slam/tools).
+
+<p align="center"><img src="fig/kaist03_trajectory.png" alt="MulRan KAIST_03, ROS 2: radar odometry drifts (rigid ATE RMSE 146.7 m), ReFeree loop closing keeps the trajectory on the ground truth (5.7 m)" width="95%" /></p>
 
 ### ROS 1 (Noetic)
 
 ```bash
 cd ~/catkin_ws/src && ln -s /path/to/ReFeree/applications/slam/ros1 referee
 cd .. && catkin build nano_gicp && catkin build
-roslaunch referee_radar_slam referee_radar_slam.launch seq_dir:=/data/KAIST_03/ save_directory:=/data/output/ rviz:=true
+roslaunch referee_radar_slam referee_radar_slam.launch seq_dir:=/data/KAIST_03/ save_directory:=/data/output/ dataset:=mulran rviz:=true
 ```
 
 ### ROS 2 (Humble)
 
 ```bash
 cd ~/ros2_ws && colcon build --base-paths /path/to/ReFeree/applications/slam/ros2
-ros2 launch referee_slam referee_slam.launch.py sequence_dir:=/data/KAIST_03 save_directory:=/data/output/
+ros2 launch referee_slam referee_slam.launch.py sequence_dir:=/data/KAIST_03 save_directory:=/data/output/ dataset:=mulran
 ```
 
 ### Docker
@@ -136,7 +143,7 @@ ros2 launch referee_slam referee_slam.launch.py sequence_dir:=/data/KAIST_03 sav
 docker build -f docker/ros1/Dockerfile -t referee:noetic .
 docker build -f docker/ros2/Dockerfile -t referee:humble .
 docker run --rm -v /data/MulRan/KAIST_03:/data/KAIST_03:ro -v $PWD/output:/data/output referee:humble \
-    ros2 launch referee_slam referee_slam.launch.py sequence_dir:=/data/KAIST_03 save_directory:=/data/output/
+    ros2 launch referee_slam referee_slam.launch.py sequence_dir:=/data/KAIST_03 save_directory:=/data/output/ dataset:=mulran
 docker run --rm referee:humble bash /referee/docker/validate.sh     # every check: C++ tests, Python tests, parity
 ```
 

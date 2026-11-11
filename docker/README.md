@@ -12,7 +12,7 @@ docker build -f docker/ros1/Dockerfile -t referee:noetic .
 docker build -f docker/ros2/Dockerfile -t referee:humble .
 docker run --rm referee:humble bash /referee/docker/validate.sh          # every check
 docker run --rm -v /data/MulRan/KAIST_03:/data/KAIST_03:ro -v $PWD/output:/data/output referee:humble \
-    ros2 launch referee_slam referee_slam.launch.py sequence_dir:=/data/KAIST_03 save_directory:=/data/output/
+    ros2 launch referee_slam referee_slam.launch.py sequence_dir:=/data/KAIST_03 save_directory:=/data/output/ dataset:=mulran
 docker run --rm -v /data/MulRan/KAIST_03:/data/KAIST_03:ro -v $PWD/output:/data/output referee:noetic \
-    roslaunch referee_radar_slam referee_radar_slam.launch seq_dir:=/data/KAIST_03/ save_directory:=/data/output/
+    roslaunch referee_radar_slam referee_radar_slam.launch seq_dir:=/data/KAIST_03/ save_directory:=/data/output/ dataset:=mulran
 ```

@@ -41,12 +41,25 @@ ROS 2 on the host: `colcon build --base-paths applications/slam/ros2` (GTSAM 4.2
 
 ## 4. Run on MulRan
 
-Convert a MulRan sequence to the Oxford layout (transpose to azimuth x range and add the 11 header bytes per row), then:
+Convert a MulRan sequence to the Oxford layout (azimuth x range, azimuth order reversed to the Oxford encoder direction, 11 header bytes per row) — without the reversal the trajectory comes out mirrored:
+
+```bash
+python3 applications/slam/tools/mulran_to_oxford.py <MulRan>/KAIST_03/polar <converted>/KAIST_03/polar
+```
+
+Then (`dataset:=mulran` sets MulRan's 0.0596 m per range bin; `oxford` is 0.0432):
 
 ```bash
 docker run --rm -v <KAIST_03>:/data/KAIST_03:ro -v ~/referee_results:/data/output referee:humble \
-  ros2 launch referee_slam referee_slam.launch.py sequence_dir:=/data/KAIST_03 save_directory:=/data/output/
-# ROS 1: referee:noetic roslaunch referee_radar_slam referee_radar_slam.launch seq_dir:=/data/KAIST_03/ save_directory:=/data/output/
+  ros2 launch referee_slam referee_slam.launch.py sequence_dir:=/data/KAIST_03 save_directory:=/data/output/ dataset:=mulran
+# ROS 1: referee:noetic roslaunch referee_radar_slam referee_radar_slam.launch seq_dir:=/data/KAIST_03/ save_directory:=/data/output/ dataset:=mulran
 ```
 
-Check that `optimized_poses_kitti.txt` and `odom_poses_kitti.txt` were written and that the log reports loops. On the whole of KAIST_03 the README reports 3,395 keyframes and 2,171 loops.
+Check that `optimized_poses_kitti.txt` and `odom_poses_kitti.txt` (ROS 1: `optimized_poses.txt`, `odom_poses.txt`, `times.txt`, `loops.csv`) were written and that the log reports loops. Score it against the ground truth:
+
+```bash
+REFEREE_SCANS=<converted>/KAIST_03/polar MULRAN_GT=<MulRan>/KAIST_03/xypose.csv \
+  python3 applications/slam/tools/evaluate_mulran.py ~/referee_results ~/referee_results/session ros2
+```
+
+On the whole of KAIST_03 (ROS 2) expect about 3,459 keyframes, 2,550 loop edges and a rigid (no-scale) ATE RMSE near 5.7 m for SLAM against 146.7 m for the odometry alone; ROS 1 gives 3,458 keyframes, 464 loops and 115.1 m.

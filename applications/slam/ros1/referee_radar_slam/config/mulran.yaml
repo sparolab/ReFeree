@@ -1,0 +1,3 @@
+# MulRan (Navtech CIR204-H): 0.0596 m per range bin, 3360 bins (200 m). Boreas also uses 0.0596 m per bin.
+radar_resolution: 0.0596
+navtech_model: CIR204

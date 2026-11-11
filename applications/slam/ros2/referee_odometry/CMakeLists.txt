@@ -54,6 +54,7 @@ ament_target_dependencies(odometry_node
 
 install(TARGETS odometry_node DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY include/ DESTINATION include)
+install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/launch")
   install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 endif()

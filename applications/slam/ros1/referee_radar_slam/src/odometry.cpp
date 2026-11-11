@@ -64,7 +64,14 @@ int main(int argc, char *argv[]) {
 
     // sensor params 
     int min_range = 58;                 // min range of radar points (bin)
-    float radar_resolution = 0.0432;    // resolution of radar bins in meters per bin
+    // resolution of radar bins in meters per bin: 0.0432 Oxford Radar RobotCar (CTS350-X), 0.0596 MulRan (CIR204-H)
+    // and Boreas. A wrong value scales the whole trajectory; set by the launch file from config/<dataset>.yaml.
+    double radar_resolution_param = 0.0432;
+    nh.param<double>("radar_resolution", radar_resolution_param, 0.0432);
+    float radar_resolution = static_cast<float>(radar_resolution_param);
+    std::string navtech_model_name;
+    nh.param<std::string>("navtech_model", navtech_model_name, "CIR204");
+    const int navtech_model = navtech_model_name == "CTS350" ? CTS350 : CIR204;
     float cart_resolution = 0.2592;     // meters per pixel
     int cart_pixel_width = 964;         // height and width of cartesian image in pixels
     bool interp = true;
@@ -142,7 +149,7 @@ int main(int argc, char *argv[]) {
             kp1 = kp2; img2.copyTo(img1);
         }
         // std::cout << datadir + "/" + radar_files[i] << std::endl;
-        load_radar(datadir + "/" + radar_files[i], times, azimuths, valid, fft_data, CIR204); // use CIR204 for MulRan dataset
+        load_radar(datadir + "/" + radar_files[i], times, azimuths, valid, fft_data, navtech_model);
 
         if (keypoint_extraction == 0)
             cen2018features(fft_data, zq, sigma_gauss, min_range, targets);
@@ -270,7 +277,9 @@ int main(int argc, char *argv[]) {
         Eigen::Vector3d currOdomEuler = currOdomRot.eulerAngles(0,1,2);
         float currYaw = float(currOdomEuler(2));
 
-        auto currOdomROSTime = ros::Time::now();
+        // stamped with the scan's own time (its file name, ns), so the session's times.txt maps keyframes to scans
+        ros::Time currOdomROSTime;
+        currOdomROSTime.fromNSec(static_cast<uint64_t>(std::stoll(radar_files[i].substr(0, radar_files[i].find('.')))));
 
         // pub
         nav_msgs::Odometry odom;

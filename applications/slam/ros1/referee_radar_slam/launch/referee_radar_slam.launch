@@ -1,9 +1,13 @@
 <!-- ReFeree radar SLAM (ROS 1): Yeti odometry publishes keyframes + ReFeree descriptors, the pose graph closes loops.
-     roslaunch referee_radar_slam referee_radar_slam.launch seq_dir:=/data/KAIST_03/ save_directory:=/data/output/ -->
+     roslaunch referee_radar_slam referee_radar_slam.launch seq_dir:=/data/KAIST_03/ save_directory:=/data/output/ dataset:=mulran -->
 <launch>
   <arg name="seq_dir" doc="sequence directory holding polar/ (timestamp-named Navtech PNGs); end with /" />
   <arg name="save_directory" default="/tmp/referee/" doc="where poses and the graph are written; end with /" />
   <arg name="keyframe_meter_gap" default="0.0" />
+  <!-- the radar: mulran (CIR204-H, 0.0596 m per range bin; Boreas also 0.0596) or oxford (CTS350-X, 0.0432 m per bin).
+       A wrong value scales the whole trajectory. -->
+  <arg name="dataset" default="mulran" />
+  <rosparam command="load" file="$(find referee_radar_slam)/config/$(arg dataset).yaml" />
   <arg name="rviz" default="false" />
   <param name="seq_dir" type="string" value="$(arg seq_dir)" />
   <param name="save_directory" type="string" value="$(arg save_directory)" />

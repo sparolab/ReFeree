@@ -1,6 +1,8 @@
 #include <math.h>
 #include <vector>
 #include <mutex>
+#include <fstream>
+#include <limits>
 #include <queue>
 #include <thread>
 #include <iostream>
@@ -146,6 +148,7 @@ std::string save_directory;
 std::string pgKITTIformat, odomKITTIformat;
 
 std::fstream pgG2oSaveStream, pgTimeSaveStream;
+std::vector<std::pair<int, int>> acceptedLoops;  // (previous, current) keyframe of every loop added to the graph
 std::vector<std::string> edges_str; // used in writeEdge
 
 std::vector<float> icp_scores;
@@ -218,6 +221,23 @@ void saveGTSAMgraphG2oFormat(const gtsam::Values& _estimates)
         pgG2oSaveStream << _line << std::endl;
 
     pgG2oSaveStream.close();
+}
+
+// times.txt: one keyframe stamp (s) per line, the scan's own time; loops.csv: the loops added to the graph.
+void saveTimesAndLoops()
+{
+    mKF.lock();
+    const std::vector<double> times = keyframeTimes;
+    mKF.unlock();
+    mtxPosegraph.lock();
+    const std::vector<std::pair<int, int>> loops = acceptedLoops;
+    mtxPosegraph.unlock();
+    std::ofstream ft(save_directory + "times.txt");
+    ft.precision(std::numeric_limits<double>::max_digits10);
+    for (double t : times) ft << t << "\n";
+    std::ofstream fl(save_directory + "loops.csv");
+    fl << "previous,current\n";
+    for (const auto& l : loops) fl << l.first << "," << l.second << "\n";
 }
 
 void saveOdometryVerticesKITTIformat(std::string _filename)
@@ -778,7 +798,13 @@ void performRefereeLoopClosure(void)
 {
     if( keyframePoses.size() < NUM_EXCLUDE_RECENT) // do not try too early 
         return;
-    
+    // once per keyframe: the released code queried the newest keyframe again at every tick, so after the
+    // sequence ended it kept adding the same loop to the graph
+    static int last_queried = -1;
+    const int newest = static_cast<int>(keyframePoses.size()) - 1;
+    if (newest == last_queried) return;
+    last_queried = newest;
+
     const referee::LoopCandidate candidate = refereeR_db.detectLoopClosure(curr_refereeR);
     const int loop_id = candidate.index; // nn index, -1 if none
     if (candidate)
@@ -842,6 +868,7 @@ void process_icp(void)
                 gtsam::Pose3 relative_pose = relative_pose_optional.value();
                 mtxPosegraph.lock();
                 gtSAMgraph.add(gtsam::BetweenFactor<gtsam::Pose3>(prev_node_idx, curr_node_idx, relative_pose, robustLoopNoise));
+                acceptedLoops.emplace_back(prev_node_idx, curr_node_idx);
                 runISAM2opt();
                 mtxPosegraph.unlock();
             } 
@@ -882,6 +909,7 @@ void process_isam(void)
             saveOptimizedVerticesKITTIformat(isamCurrentEstimate, pgKITTIformat); // pose
             saveOdometryVerticesKITTIformat(odomKITTIformat); // pose
             saveGTSAMgraphG2oFormat(isamCurrentEstimate);
+            saveTimesAndLoops();
         }
     }
 }
@@ -935,8 +963,6 @@ int main(int argc, char **argv)
     pgKITTIformat = save_directory + "optimized_poses.txt";
     odomKITTIformat = save_directory + "odom_poses.txt";
 
-    pgTimeSaveStream = std::fstream(save_directory + "times.txt", std::fstream::out); 
-    pgTimeSaveStream.precision(std::numeric_limits<double>::max_digits10);
 
     nh.param<double>("keyframe_meter_gap", keyframeMeterGap, 0.0); // pose assignment every k frames 
     nh.param<bool>("is_withInitialICP", is_withInitialICP, false);

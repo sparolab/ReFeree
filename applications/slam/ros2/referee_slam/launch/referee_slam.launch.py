@@ -1,11 +1,16 @@
 """Radar odometry and pose-graph SLAM over a recorded sequence.
 
-    ros2 launch referee_slam referee_slam.launch.py sequence_dir:=/data/radar/Mulran/KAIST_03
+    ros2 launch referee_slam referee_slam.launch.py sequence_dir:=/data/radar/Mulran/KAIST_03 dataset:=mulran
+
+``dataset`` picks the radar (referee_odometry/config/<dataset>.yaml): mulran (CIR204-H, 0.0596 m per range bin;
+Boreas also uses 0.0596) or oxford (Oxford Radar RobotCar, CTS350-X, 0.0432 m per bin). A wrong value scales the
+whole trajectory.
 """
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node
 
 
@@ -19,13 +24,19 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument("save_directory", default_value="/data/output/",
                               description="Where the pose graph is written; end with /"),
         DeclareLaunchArgument("keyframe_gap_m", default_value="0.0"),
+        DeclareLaunchArgument("dataset", default_value="mulran",
+                              description="mulran (0.0596 m/bin) or oxford (0.0432 m/bin)"),
 
         Node(
             package="referee_odometry",
             executable="odometry_node",
             name="referee_odometry",
             output="screen",
-            parameters=[{"sequence_dir": sequence_dir}],
+            parameters=[
+                PathJoinSubstitution([FindPackageShare("referee_odometry"), "config",
+                                      [LaunchConfiguration("dataset"), ".yaml"]]),
+                {"sequence_dir": sequence_dir},
+            ],
         ),
         Node(
             package="referee_slam",

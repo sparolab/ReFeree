@@ -10,7 +10,7 @@ ReFeree itself is no longer a private copy: both nodes use the repository's core
 ```bash
 cd ~/catkin_ws/src && ln -s /path/to/ReFeree/applications/slam/ros1 referee
 cd .. && catkin build nano_gicp && catkin build
-roslaunch referee_radar_slam referee_radar_slam.launch seq_dir:=/data/KAIST_03/ save_directory:=/data/output/ rviz:=true
+roslaunch referee_radar_slam referee_radar_slam.launch seq_dir:=/data/KAIST_03/ save_directory:=/data/output/ dataset:=mulran rviz:=true
 ```
 
-`seq_dir` holds `polar/<timestamp>.png` in the Oxford layout (see the top-level README). Or with Docker: `docker build -f docker/ros1/Dockerfile -t referee:noetic .` from the repository root.
+`seq_dir` holds `polar/<timestamp>.png` in the Oxford layout (MulRan: convert with [`../tools/mulran_to_oxford.py`](../tools/mulran_to_oxford.py)). `dataset:=mulran` (0.0596 m per range bin) or `oxford` (0.0432) sets the radar; a wrong value scales the trajectory. The session written to `save_directory`: `odom_poses.txt`, `optimized_poses.txt` (KITTI), `times.txt` (each keyframe's scan time, s), `loops.csv` and the `.g2o` graph. Or with Docker: `docker build -f docker/ros1/Dockerfile -t referee:noetic .` from the repository root.

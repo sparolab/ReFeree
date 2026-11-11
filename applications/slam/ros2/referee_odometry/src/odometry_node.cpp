@@ -81,9 +81,11 @@ class RadarOdometryNode : public rclcpp::Node {
     child_frame_id_ = declare_parameter<std::string>("child_frame_id", "radar");
 
     min_range_ = declare_parameter<int>("min_range", 58);
-    // Metres per range bin. Entangled with the encoder convention the azimuths
-    // are read under, so it is left where the published code had it.
+    // Metres per range bin of the radar: 0.0432 for Oxford Radar RobotCar (CTS350-X, the published default),
+    // 0.0596 for MulRan (CIR204-H) and Boreas. A wrong value scales the whole trajectory; the launch file sets
+    // it from config/<dataset>.yaml.
     radar_resolution_ = declare_parameter<double>("radar_resolution", 0.0432);
+    navtech_model_ = declare_parameter<std::string>("navtech_model", "CIR204") == "CTS350" ? CTS350 : CIR204;
     cart_resolution_ = declare_parameter<double>("cart_resolution", 0.2592);
     cart_pixel_width_ = declare_parameter<int>("cart_pixel_width", 964);
     zq_ = declare_parameter<double>("cen2018_zq", 3.0);
@@ -153,7 +155,7 @@ class RadarOdometryNode : public rclcpp::Node {
       std::vector<double> azimuths;
       std::vector<bool> valid;
       cv::Mat power;
-      load_radar(scan_dir + "/" + scans[i], times, azimuths, valid, power, CIR204);
+      load_radar(scan_dir + "/" + scans[i], times, azimuths, valid, power, navtech_model_);
       const std::vector<int64_t>& power_stamps = times;
 
       Eigen::MatrixXd targets;
@@ -298,6 +300,7 @@ class RadarOdometryNode : public rclcpp::Node {
   std::string sequence_dir_, scan_subdir_, frame_id_, child_frame_id_;
   int min_range_, cart_pixel_width_, sigma_gauss_, patch_size_, max_iterations_,
       max_gn_iterations_, period_ms_;
+  int navtech_model_ = CIR204;
   double radar_resolution_, cart_resolution_, zq_, nndr_, ransac_threshold_, inlier_ratio_,
       doppler_beta_;
 

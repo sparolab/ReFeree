@@ -1,0 +1,5 @@
+# Oxford Radar RobotCar (Navtech CTS350-X): 0.0432 m per range bin, 3768 bins.
+referee_odometry:
+  ros__parameters:
+    radar_resolution: 0.0432
+    navtech_model: CTS350

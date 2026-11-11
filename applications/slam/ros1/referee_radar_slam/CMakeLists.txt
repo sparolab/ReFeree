@@ -46,4 +46,4 @@ target_link_libraries(referee_posegraph referee::referee ${catkin_LIBRARIES} ${P
 add_dependencies(referee_posegraph ${PROJECT_NAME}_generate_messages_cpp)
 
 install(TARGETS referee_odometry referee_posegraph RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
-install(DIRECTORY launch rviz DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
+install(DIRECTORY launch rviz config DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
