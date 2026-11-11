@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  library:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.9", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: C++ core
+        run: |
+          if [ "$RUNNER_OS" = macOS ]; then
+            brew install opencv eigen libomp
+            export OpenMP_ROOT=$(brew --prefix libomp)
+          else
+            sudo apt-get update && sudo apt-get install -y libopencv-dev libeigen3-dev
+          fi
+          cmake -S cpp -B cpp/build -DCMAKE_BUILD_TYPE=Release && cmake --build cpp/build -j
+          ctest --test-dir cpp/build --output-on-failure
+      - name: Python package (published descriptors + C++ parity)
+        run: |
+          pip install . pytest
+          python -c "import referee; print(referee.__version__)"
+          pytest -q python/tests

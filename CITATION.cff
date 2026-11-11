@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use ReFeree, please cite the paper below."
+title: "ReFeree: radar place recognition from features and free space"
+type: software
+version: 2.0.0
+date-released: 2026-11-11
+repository-code: "https://github.com/sparolab/ReFeree"
+url: "https://sites.google.com/view/referee-radar"
+license: BSD-3-Clause
+keywords: [radar, place-recognition, loop-closure, slam, global-descriptor]
+authors: &authors
+  - family-names: Kim
+    given-names: Hogyun
+  - family-names: Choi
+    given-names: Byunghee
+  - family-names: Choi
+    given-names: Euncheol
+  - family-names: Cho
+    given-names: Younggun
+preferred-citation:
+  type: article
+  title: "ReFeree: Radar-Based Lightweight and Robust Localization using Feature and Free space"
+  authors: *authors
+  journal: "IEEE Robotics and Automation Letters"
+  year: 2024
+  identifiers:
+    - type: other
+      value: "arXiv:2410.01325"

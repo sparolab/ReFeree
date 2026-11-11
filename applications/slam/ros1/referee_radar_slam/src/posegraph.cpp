@@ -23,7 +23,6 @@
 #include <pcl/octree/octree_pointcloud_voxelcentroid.h>
 #include <pcl/filters/crop_box.h> 
 #include <pcl_conversions/pcl_conversions.h>
-#include <pcl/visualization/cloud_viewer.h>
 
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
@@ -50,7 +49,15 @@
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/ISAM2.h>
 
-#include "referee.hpp"
+#include "referee/descriptor.hpp"  // ReFeree, from the core library (cpp/): the published descriptors and lookup
+#include "referee/retrieval.hpp"
+#include <referee_radar_slam/CurrReferee.h>
+
+const int NUM_EXCLUDE_RECENT = 30;  // keyframes before the current one that may not close a loop
+const double LOOP_THRES = 0.9;      // cosine similarity of the range descriptors
+std::vector<float> curr_refereeR, curr_refereeA;
+referee::RangeDescriptorDatabase refereeR_db(referee::RetrievalParams{NUM_EXCLUDE_RECENT, LOOP_THRES});
+referee::AngleDescriptorDatabase refereeA_db;
 #include "nano_gicp/nano_gicp.hpp"
 #include "nano_gicp/point_type_nano_gicp.hpp"
 #include "tf_eigen_manager.h"
@@ -89,7 +96,7 @@ std::queue<nav_msgs::Odometry::ConstPtr> odometryBuf;
 std::queue<sensor_msgs::PointCloud2ConstPtr> fullResBuf;
 // std::queue<std::pair<int, int> > RefereeLoopICPBuf;
 std::queue<LoopICP> RefereeLoopICPBuf;
-std::queue<yeti::CurrReferee::ConstPtr> DescBuf;
+std::queue<referee_radar_slam::CurrReferee::ConstPtr> DescBuf;
 
 std::mutex mBuf;
 std::mutex mKF;
@@ -141,7 +148,6 @@ std::string pgKITTIformat, odomKITTIformat;
 std::fstream pgG2oSaveStream, pgTimeSaveStream;
 std::vector<std::string> edges_str; // used in writeEdge
 
-pcl::visualization::CloudViewer viewer("Cloud Viewer");
 std::vector<float> icp_scores;
 
 Pose6D getOdom(nav_msgs::Odometry::ConstPtr _odom)
@@ -271,7 +277,7 @@ void laserCloudFullResHandler(const sensor_msgs::PointCloud2ConstPtr &_laserClou
 	mBuf.unlock();
 } // laserCloudFullResHandler
 
-void RefereeHandler(const yeti::CurrReferee::ConstPtr & _Referee)
+void RefereeHandler(const referee_radar_slam::CurrReferee::ConstPtr & _Referee)
 {
 	mBuf.lock();
 	// curr_referee = _Referee->data;
@@ -606,12 +612,8 @@ std::optional<gtsam::Pose3> doICPVirtualRelativeWithInitial(int _loop_kf_idx, in
     pcl::PointCloud<PointType>::Ptr unused_result(new pcl::PointCloud<PointType>());
     icp.align(*unused_result);
 
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr src_colored(new pcl::PointCloud<pcl::PointXYZRGB>);
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr tgt_colored(new pcl::PointCloud<pcl::PointXYZRGB>);
-    colorize(*unused_result, *src_colored, {255, 0, 0});
-    colorize(*targetKeyframeCloud, *tgt_colored, {0, 255, 0});
-    viewer.showCloud(src_colored, "src_viz");
-    viewer.showCloud(tgt_colored, "tgt_viz");
+    // (the released code showed both clouds in a PCL CloudViewer here; dropped so the node runs headless,
+    //  the loops are on the ROS topics for RViz)
     
     float icpScoreThreshold = 200.; // user parameter but fixed low value is safe.
     if(icp_scores.size() > 0) {
@@ -684,12 +686,12 @@ void process_pg()
 				// mBuf.lock();
 				// if (!DescBuf.empty()) {
                 
-				boost::shared_ptr<const yeti::CurrReferee> referee_ptr = DescBuf.front();
+				boost::shared_ptr<const referee_radar_slam::CurrReferee> referee_ptr = DescBuf.front();
 				// curr_referee = referee_ptr->referee;
-                curr_refereeR = ReFereeR(referee_ptr->refereeR);
-				curr_refereeA = ReFereeA(referee_ptr->refereeA);
-				refereeR_db.push_back(curr_refereeR);
-				refereeA_db.push_back(curr_refereeA);
+                curr_refereeR = referee_ptr->refereeR;
+				curr_refereeA = referee_ptr->refereeA;
+				refereeR_db.add(curr_refereeR);
+				refereeA_db.add(curr_refereeA);
                 
 				DescBuf.pop();
 				// }
@@ -777,8 +779,11 @@ void performRefereeLoopClosure(void)
     if( keyframePoses.size() < NUM_EXCLUDE_RECENT) // do not try too early 
         return;
     
-    int loop_id = refereeR_db.detectLoopClosureID(curr_refereeR); // nn index
-    double yaw_diff = refereeA_db.getYawDiff(curr_refereeA, loop_id); // yaw_diff
+    const referee::LoopCandidate candidate = refereeR_db.detectLoopClosure(curr_refereeR);
+    const int loop_id = candidate.index; // nn index, -1 if none
+    if (candidate)
+        std::cout << "\033[1;32m[Loop found] similarity " << candidate.similarity << " between " << refereeR_db.size() - 1 << " and " << loop_id << "\033[0m" << std::endl;
+    double yaw_diff = refereeA_db.yawDifference(curr_refereeA, loop_id); // yaw_diff
     
     int RefereeclosestHistoryFrameID = loop_id;
     if( RefereeclosestHistoryFrameID != -1 ) {
@@ -949,7 +954,7 @@ int main(int argc, char **argv)
     float map_vis_size = 0.2;
     downSizeFilterMapPGO.setLeafSize(map_vis_size, map_vis_size, map_vis_size);
 
-	ros::Subscriber subReferee = nh.subscribe<yeti::CurrReferee>("referee", 100, RefereeHandler);
+	ros::Subscriber subReferee = nh.subscribe<referee_radar_slam::CurrReferee>("referee", 100, RefereeHandler);
 	ros::Subscriber subLaserCloudFullRes = nh.subscribe<sensor_msgs::PointCloud2>("yeti_cloud_local", 100, laserCloudFullResHandler);
 	ros::Subscriber subLaserOdometry = nh.subscribe<nav_msgs::Odometry>("yeti_odom", 100, laserOdometryHandler);
 

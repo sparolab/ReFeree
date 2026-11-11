@@ -28,11 +28,11 @@
 
 #include "radar_utils.hpp"
 #include "features.hpp"
-#include "referee.hpp"
+#include "referee/descriptor.hpp"  // ReFeree, from the core library (cpp/)
 #include "association.hpp"
 #include "key_operation.hpp"
 
-#include <yeti/CurrReferee.h>
+#include <referee_radar_slam/CurrReferee.h>
 
 typedef pcl::PointXYZI PointType;
 
@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
 	pubLaserCloudLocal = nh.advertise<sensor_msgs::PointCloud2>("yeti_cloud_local", 100);
 	pubLaserCloudGlobal = nh.advertise<sensor_msgs::PointCloud2>("yeti_cloud_global", 100);
 	
-    pubReferee = nh.advertise<yeti::CurrReferee>("referee", 100);
+    pubReferee = nh.advertise<referee_radar_slam::CurrReferee>("referee", 100);
 
     std::string seq_dir;
 	nh.param<std::string>("seq_dir", seq_dir, ""); // pose assignment every k frames 
@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
     std::vector<bool> valid;
     cv::Mat fft_data;
 
-    yeti::CurrReferee refereeMsg;
+    referee_radar_slam::CurrReferee refereeMsg;
 
     // for (uint i = 0; i < radar_files.size() - 1; ++i) {
     uint i = 0;
@@ -154,8 +154,8 @@ int main(int argc, char *argv[]) {
 
         // Make Referee
         // =========================================================================
-        refereeMsg.refereeR = ReFereeR(polar).desc;
-        refereeMsg.refereeA = ReFereeA(polar).desc;
+        refereeMsg.refereeR = referee::makeRangeDescriptor(polar);
+        refereeMsg.refereeA = referee::makeAngleDescriptor(polar);
         pubReferee.publish(refereeMsg);
         // =========================================================================
 

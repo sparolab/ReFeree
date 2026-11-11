@@ -1,4 +1,4 @@
-# referee (Python)
+# referee (Python) — `pip install referee-radar`
 
 Mirrors the C++ core under `cpp/` module for module, and is checked
 against the descriptors the published implementation produced. The C++ side is
@@ -18,9 +18,11 @@ tests/             equivalence with the published C++
 ## Install
 
 ```bash
-pip install -e .[test]
-python3 -m pytest tests/ -v
+pip install referee-radar        # or, from the repository root: pip install ".[test]"
+python3 -m pytest python/tests -v
 ```
+
+`tests/test_cpp.py` also checks this package against the C++ core when `cpp/build/referee_describe` is built.
 
 ## Use
 
