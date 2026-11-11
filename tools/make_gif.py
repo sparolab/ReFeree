@@ -5,7 +5,9 @@
 
 <session>: poses.txt, odom_poses.txt, times.txt, loops.csv, gif_features.npz (per-keyframe radar features and
 ReFeree range descriptors). Left: the radar scan and its descriptor; right: the radar feature map on the
-optimized poses, the odometry, the SLAM trajectory and its loops.
+current estimate, the odometry, the SLAM trajectory and its loops.
+The pose graph (singlesession_posegraph.g2o) is replayed into iSAM2 keyframe by keyframe, so each frame shows
+what the robot believed at that moment: the trajectory and the map snap into place when a loop closes.
 """
 import argparse
 import io
@@ -26,6 +28,55 @@ def read_pcd(path):
     raw = Path(path).read_bytes()
     i = raw.index(b"DATA binary\n") + len(b"DATA binary\n")
     return np.frombuffer(raw[i:], np.float32).reshape(-1, 4)
+
+
+def online_estimates(odom, loops, ks, odom_sigma, loop_sigma):
+    """Replay the pose graph the way the SLAM node built it: one keyframe at a time, into iSAM2.
+
+    odom: (n, 3) odometry poses (x, y, yaw). loops: [(i, j, (dx, dy, dyaw))], i < j, the measured pose of j in i.
+    Returns {k: (k+1, 3) estimate right after keyframe k} for k in ks: what the robot believed at that moment.
+    """
+    import gtsam
+    import numpy as np
+
+    P = [gtsam.Pose2(*p) for p in odom]
+    on = gtsam.noiseModel.Diagonal.Sigmas(np.asarray(odom_sigma, float))
+    ln = gtsam.noiseModel.Robust.Create(gtsam.noiseModel.mEstimator.Cauchy.Create(1.0),
+                                        gtsam.noiseModel.Diagonal.Sigmas(np.asarray(loop_sigma, float)))
+    at = {}
+    for i, j, d in loops:
+        at.setdefault(j, []).append((i, gtsam.Pose2(*d)))
+    isam = gtsam.ISAM2()
+    want, out, last = set(ks), {}, P[0]
+    for k in range(max(ks) + 1):
+        g, v = gtsam.NonlinearFactorGraph(), gtsam.Values()
+        if k == 0:
+            g.add(gtsam.PriorFactorPose2(0, P[0], gtsam.noiseModel.Diagonal.Sigmas(np.array([1e-3, 1e-3, 1e-4]))))
+            v.insert(0, P[0])
+        else:
+            d = P[k - 1].between(P[k])
+            g.add(gtsam.BetweenFactorPose2(k - 1, k, d, on))
+            v.insert(k, last.compose(d))
+        for i, m in at.get(k, []):
+            g.add(gtsam.BetweenFactorPose2(i, k, m, ln))
+        isam.update(g, v)
+        for _ in range(3 if k in at else 0):
+            isam.update()
+        e = isam.calculateEstimate()
+        last = e.atPose2(k)
+        if k in want:
+            out[k] = np.array([[e.atPose2(i).x(), e.atPose2(i).y(), e.atPose2(i).theta()] for i in range(k + 1)])
+    return out
+
+
+def g2o_loops(path):
+    """Loop edges (not consecutive) of a g2o pose graph: [(i, j, (dx, dy, dyaw))], the pose of j in i."""
+    out = []
+    for line in Path(path).read_text().splitlines():
+        f = line.split()
+        if f and f[0].startswith("EDGE") and abs(int(f[2]) - int(f[1])) > 1:
+            out.append((int(f[1]), int(f[2]), (float(f[3]), float(f[4]), 2 * np.arctan2(float(f[8]), float(f[9])))))
+    return out
 
 
 def cart(polar_png, resolution, header=11, radius=80.0, size=360, reverse=False):
@@ -63,7 +114,7 @@ def main():
     O = np.loadtxt(r / "odom_poses.txt")
     n = min(len(P), len(O))
     xy, yaw = P[:n][:, [3, 7]], np.arctan2(P[:n, 4], P[:n, 0])
-    oxy = O[:n][:, [3, 7]]
+    oxy, oyaw = O[:n][:, [3, 7]], np.arctan2(O[:n, 4], O[:n, 0])
     t = np.loadtxt(r / "times.txt")[:n]
     F = np.load(r / "gif_features.npz")
     scans = list(F["scans"])[:n]
@@ -88,10 +139,10 @@ def main():
     gx, gy = np.arange(lo[0], hi[0], a.grid), np.arange(lo[1], hi[1], a.grid)
     count = np.zeros((len(gy), len(gx)))
 
-    def paint(k):
+    def paint(k, X):
         q = feats[starts[k]:starts[k + 1]]
-        c, s = np.cos(yaw[k]), np.sin(yaw[k])
-        w = q @ np.array([[c, s], [-s, c]]) + xy[k]
+        c, s = np.cos(X[k, 2]), np.sin(X[k, 2])
+        w = q @ np.array([[c, s], [-s, c]]) + X[k, :2]
         ix, iy = ((w[:, 0] - lo[0]) / a.grid).astype(int), ((w[:, 1] - lo[1]) / a.grid).astype(int)
         ok = (ix >= 0) & (ix < len(gx)) & (iy >= 0) & (iy < len(gy))
         np.add.at(count, (iy[ok], ix[ok]), 1)
@@ -100,12 +151,18 @@ def main():
     for q, m in loops:
         loop_at.setdefault(q, []).append(m)
     ks = list(range(0, n, a.every)) + [n - 1] * a.fps * 2
-    frames, painted, last_loop = [], -1, None
+    est = online_estimates(np.c_[oxy, oyaw], [l for l in g2o_loops(r / "singlesession_posegraph.g2o") if l[1] < n],
+                           ks, (0.01, 0.01, 0.001), (0.5 ** 0.5,) * 3)
+    frames, painted, last_loop, prev_k, prev_E = [], -1, None, -1, None
     plt.rcParams.update({"font.family": "DejaVu Sans", "text.color": FG})
     for k in ks:
+        E = est[k]
+        closed = any(prev_k < q <= k for q in loop_at)
+        if closed:                           # the graph moved: rebuild the map on the corrected poses
+            count[:], painted = 0, -1
         while painted < k:
             painted += 1
-            paint(painted)
+            paint(painted, E)
         fig = plt.figure(figsize=(12.8, 6.4), dpi=80, facecolor=BG)
         ax_img = fig.add_axes([0.03, 0.33, 0.33, 0.58])
         ax_d = fig.add_axes([0.05, 0.08, 0.30, 0.18])
@@ -139,12 +196,14 @@ def main():
         if gt is not None:
             ax_map.plot(gt[: k + 1, 0], gt[: k + 1, 1], ":", c=FG, lw=1.0, alpha=0.6, label="ground truth")
         ax_map.plot(oxy[: k + 1, 0], oxy[: k + 1, 1], "--", c=GREY, lw=1.2, label="radar odometry")
-        segs = [(xy[q], xy[m]) for q, m in loops if q <= k]
+        segs = [(E[q, :2], E[m, :2]) for q, m in loops if q <= k]
         if segs:
             from matplotlib.collections import LineCollection
             ax_map.add_collection(LineCollection(segs, colors=GREEN, linewidths=0.6, alpha=0.6))
-        ax_map.plot(xy[: k + 1, 0], xy[: k + 1, 1], "-", c=BLUE, lw=1.8, label=f"+ {a.name} loops")
-        ax_map.plot(*xy[k], "o", c=ORANGE, ms=7)
+        if closed and prev_E is not None:    # the estimate just before the loop, for a moment
+            ax_map.plot(prev_E[:, 0], prev_E[:, 1], "-", c=BLUE, lw=1.4, alpha=0.35)
+        ax_map.plot(E[:, 0], E[:, 1], "-", c=BLUE, lw=1.8, label=f"SLAM + {a.name} loops (iSAM2, online)")
+        ax_map.plot(*E[k, :2], "o", c=ORANGE, ms=7)
         ax_map.set_xlim(lo[0], hi[0]); ax_map.set_ylim(lo[1], hi[1]); ax_map.set_aspect("equal")
         ax_map.axis("off")
         ax_map.set_title(f"{a.title}  ·  {sum(1 for q, _ in loops if q <= k)} loops", color=FG, fontsize=13, loc="left")
@@ -153,6 +212,7 @@ def main():
         fig.savefig(buf, format="png", facecolor=BG)
         plt.close(fig)
         frames.append(Image.open(buf).convert("RGB"))
+        prev_k, prev_E = k, E
     pal = frames[-1].quantize(colors=128, method=Image.Quantize.MEDIANCUT)
     qf = [f.quantize(palette=pal, dither=Image.Dither.NONE) for f in frames]
     qf[0].save(a.out, save_all=True, append_images=qf[1:], duration=int(1000 / a.fps), loop=0, optimize=True)
