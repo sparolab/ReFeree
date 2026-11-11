@@ -163,16 +163,6 @@ The agent follows [`AGENTS.md`](AGENTS.md): it installs the library, builds the 
 
 ______________________________________________________________________
 
-## :wrench: What changed in v2
-
-- **One repository, library first** (November 2026): the C++ core and the Python package (`pip install referee-radar`) give the same descriptors; [ReFeree-Radar-SLAM](https://github.com/sparolab/ReFeree-Radar-SLAM) (ROS 1, September 2024) is merged in, next to ROS 2, both on one ROS-free back end.
-- **The published descriptors, kept**: both reproduce the code released with the paper (checked in CI). Its two off-by-one errors stay on by default and can be switched off: `legacy_window_alignment` (the range window starts one bin late) and `legacy_skip_nearest_bin` (the angle scan never examines bin 0); see [python/README.md](python/README.md).
-- **MulRan range resolution**: the released odometry assumed Oxford's 0.0432 m per bin; MulRan's radar is 0.0596 m, so trajectories came out 1.38 times too small. `dataset:=mulran|oxford` sets it.
-- **Odometry RANSAC**: motion-distorted RANSAC drew a fixed 100 pairs and took the best even when 2 matches supported it (a 32 m, 33° jump on `KAIST_03`); it now draws adaptively to 99.9 % confidence, and a motion supported by fewer than 10 matches keeps the previous one.
-- **Loop verification**: nano-GICP seeded with the descriptor yaw, fitness ≤ 200, and the residual translation ≤ 3 m; the seed rotation is now part of the constraint.
-
-______________________________________________________________________
-
 ## Citation
 
 If you use ReFeree in your research, please cite our [paper](https://ieeexplore.ieee.org/document/10705066).
