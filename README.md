@@ -1,5 +1,9 @@
 <div align="center">
-  <h1>ReFeree</h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="fig/logo_dark.svg" />
+    <img src="fig/logo_light.svg" alt="ReFeree: Radar Localization using Feature and Free Space" width="560" />
+  </picture>
+  <br />
   <a href="https://github.com/sparolab/ReFeree/tree/main/cpp"><img src="https://img.shields.io/badge/-C++-blue?logo=cplusplus" /></a>
   <a href="https://github.com/sparolab/ReFeree/tree/main/python"><img src="https://img.shields.io/badge/Python-3670A0?logo=python&logoColor=ffdd54" /></a>
   <a href="https://pypi.org/project/referee-radar/"><img src="https://img.shields.io/pypi/v/referee-radar?logo=pypi&logoColor=white&label=PyPI&cacheSeconds=3600" /></a>
