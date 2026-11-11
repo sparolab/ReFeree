@@ -21,6 +21,7 @@ RUN git clone --depth 1 --branch 4.2 https://github.com/borglab/gtsam.git /opt/g
 COPY cpp /referee/cpp
 COPY python /referee/python
 COPY applications/slam /referee/applications/slam
+COPY applications/multi-session-slam /referee/applications/multi-session-slam
 COPY docker/validate.sh /referee/docker/validate.sh
 # the core and its checks
 RUN cmake -S /referee/cpp -B /referee/cpp/build -DCMAKE_BUILD_TYPE=Release && cmake --build /referee/cpp/build -j8 && \
@@ -28,7 +29,7 @@ RUN cmake -S /referee/cpp -B /referee/cpp/build -DCMAKE_BUILD_TYPE=Release && cm
 # the ROS 2 workspace (finds cpp/ and applications/slam/common by relative path)
 WORKDIR /referee/ws
 RUN source /opt/ros/humble/setup.bash && \
-    colcon build --base-paths /referee/applications/slam/ros2 --cmake-args -DCMAKE_BUILD_TYPE=Release \
+    colcon build --base-paths /referee/applications/slam/ros2 /referee/applications/multi-session-slam --cmake-args -DCMAKE_BUILD_TYPE=Release \
         -DREFEREE_BUILD_TOOLS=OFF --parallel-workers 4
 RUN echo "source /referee/ws/install/setup.bash" >> /root/.bashrc
 ENTRYPOINT ["/bin/bash", "-c", "source /referee/ws/install/setup.bash && exec \"$@\"", "--"]

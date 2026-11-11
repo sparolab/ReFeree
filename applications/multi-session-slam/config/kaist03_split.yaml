@@ -1,0 +1,20 @@
+ltslam:
+
+  sessions_dir: "/data/output/sessions/"   # end with /
+
+  central_sess_name: "01"                  # first half of the run
+  query_sess_name: "02"                    # second half, which retraces it
+
+  save_directory: "/data/output/sessions/LT_result/"   # end with /
+
+  is_display_debug_msgs: false
+
+  # the single-session loop check (applications/slam/common/loop_registration): nano-GICP seeded with the
+  # angle descriptor's yaw, fitness <= loopFitnessScoreThreshold, residual translation <= loopMaxTranslation (m)
+  loopFitnessScoreThreshold: 200.0
+  loopMaxTranslation: 3.0
+
+  kNumSCLoopsUpperBound: 1000
+  kNumRSLoopsUpperBound: 0
+
+  numberOfCores: 16

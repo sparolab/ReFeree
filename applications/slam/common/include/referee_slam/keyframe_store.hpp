@@ -73,6 +73,14 @@ class KeyframeStore {
     std::lock_guard<std::mutex> lock(mutex_);
     return clouds_.at(static_cast<std::size_t>(index));
   }
+  std::vector<float> rangeDescriptor(int index) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return range_descriptors_.at(static_cast<std::size_t>(index));
+  }
+  std::vector<float> angleDescriptor(int index) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return angle_descriptors_.at(static_cast<std::size_t>(index));
+  }
   double stamp(int index) const {
     std::lock_guard<std::mutex> lock(mutex_);
     return stamps_.at(static_cast<std::size_t>(index));

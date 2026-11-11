@@ -1,6 +1,7 @@
 #include "referee_slam/graph_io.hpp"
 
 #include <fstream>
+#include <sstream>
 #include <stdexcept>
 
 namespace referee_slam {
@@ -57,6 +58,31 @@ void saveVerticesKitti(const std::string& path, const gtsam::Values& estimates) 
   auto out = openOrThrow(path);
   for (const auto& key_value : estimates)
     writeKittiRow(out, estimates.at<gtsam::Pose3>(key_value.key));
+}
+
+void writeRefereeDescriptorText(const std::string& path, const std::vector<float>& range_descriptor,
+                                const std::vector<float>& angle_descriptor) {
+  std::ofstream out(path);
+  if (!out) throw std::runtime_error("referee_slam: cannot write " + path);
+  out.precision(9);
+  for (const auto* d : {&range_descriptor, &angle_descriptor}) {
+    for (std::size_t i = 0; i < d->size(); ++i) out << (i ? " " : "") << (*d)[i];
+    out << "\n";
+  }
+}
+
+bool readRefereeDescriptorText(const std::string& path, std::vector<float>& range_descriptor,
+                               std::vector<float>& angle_descriptor) {
+  std::ifstream in(path);
+  std::string line;
+  for (auto* d : {&range_descriptor, &angle_descriptor}) {
+    d->clear();
+    if (!std::getline(in, line)) return false;
+    std::istringstream row(line);
+    float v;
+    while (row >> v) d->push_back(v);
+  }
+  return true;
 }
 
 }  // namespace referee_slam

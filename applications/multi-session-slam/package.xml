@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://relaxng.org/ns/structure/1.0"?>
+<package format="3">
+  <name>referee_multi_session</name>
+  <version>2.0.0</version>
+  <description>Multi-session radar SLAM: aligns sessions written by the ReFeree SLAM through inter-session ReFeree
+    loops (anchor nodes, nano-GICP verification), after LT-mapper. ROS-free, file in / file out.</description>
+  <maintainer email="hg.kim@inha.edu">Hogyun Kim</maintainer>
+  <license>BSD-3-Clause</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <!-- system deps (GTSAM, PCL, OpenCV, Eigen, OpenMP) come from the Docker images -->
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

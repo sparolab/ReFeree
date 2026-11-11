@@ -12,10 +12,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 COPY cpp /referee/cpp
 COPY applications/slam /referee/applications/slam
+COPY applications/multi-session-slam /referee/applications/multi-session-slam
 WORKDIR /referee/ws
 RUN source /opt/ros/noetic/setup.bash && catkin init && \
     catkin config --source-space /referee/applications/slam/ros1 --cmake-args -DCMAKE_BUILD_TYPE=Release && \
     catkin build -j8 --no-status
+# multi-session tool (ROS-free)
+RUN source /opt/ros/noetic/setup.bash && cmake -S /referee/applications/multi-session-slam -B /referee/ms-build -DCMAKE_BUILD_TYPE=Release && \
+    cmake --build /referee/ms-build -j8 && cp /referee/ms-build/multi_session_node /usr/local/bin/
 RUN echo "source /referee/ws/devel/setup.bash" >> /root/.bashrc
 ENTRYPOINT ["/bin/bash", "-c", "source /referee/ws/devel/setup.bash && exec \"$@\"", "--"]
 CMD ["bash"]

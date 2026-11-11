@@ -15,7 +15,9 @@
 #include <atomic>
 #include <chrono>
 #include <deque>
+#include <filesystem>
 #include <fstream>
+#include <sstream>
 #include <iomanip>
 #include <memory>
 #include <mutex>
@@ -30,6 +32,7 @@
 
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
+#include <pcl/io/pcd_io.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
@@ -300,6 +303,26 @@ class PoseGraphNode {
     for (std::size_t i = 0; i < store_.size(); ++i) out << store_.stamp(static_cast<int>(i)) << "\n";
   }
 
+  // The keyframe scans and descriptors, named "<index>,<epoch ns>", for the multi-session tool
+  // (applications/multi-session-slam). Written incrementally: a keyframe never changes once added.
+  void saveNewKeyframes() {
+    namespace fs = std::filesystem;
+    const std::string desc_dir = save_directory_ + "RefereeDescriptors/";
+    const std::string scan_dir = save_directory_ + "Scans/";
+    fs::create_directories(desc_dir);
+    fs::create_directories(scan_dir);
+    const int count = static_cast<int>(store_.size());
+    for (int i = saved_keyframes_; i < count; ++i) {
+      std::ostringstream name;
+      name << i << "," << static_cast<std::int64_t>(store_.stamp(i) * 1e9);
+      writeRefereeDescriptorText(desc_dir + name.str() + ".txt", store_.rangeDescriptor(i),
+                                 store_.angleDescriptor(i));
+      const Cloud::Ptr cloud = store_.cloud(i);
+      if (cloud && !cloud->empty()) pcl::io::savePCDFileBinary(scan_dir + name.str() + ".pcd", *cloud);
+    }
+    saved_keyframes_ = count;
+  }
+
   void save() {
     if (store_.size() == 0) return;
     std::lock_guard<std::mutex> lock(graph_mutex_);
@@ -307,6 +330,7 @@ class PoseGraphNode {
       savePoseGraphG2o(save_directory_ + "singlesession_posegraph.g2o", store_.poses(), edges_);
       saveVerticesKitti(save_directory_ + "odom_poses_kitti.txt", store_.poses());
       saveKeyframeTimes(save_directory_ + "keyframe_times.txt");
+      saveNewKeyframes();
       if (!estimate_.empty())
         saveVerticesKitti(save_directory_ + "optimized_poses_kitti.txt", estimate_);
       ROS_INFO("wrote %zu keyframes to %s", store_.size(), save_directory_.c_str());
@@ -316,6 +340,7 @@ class PoseGraphNode {
   }
 
   std::string save_directory_, frame_id_;
+  int saved_keyframes_ = 0;
   double keyframe_gap_m_, loop_noise_score_, min_loop_travel_;
   int loop_period_ms_, save_every_, optimise_period_ms_;
   RegistrationParams registration_;

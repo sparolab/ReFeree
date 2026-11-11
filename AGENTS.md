@@ -16,7 +16,7 @@ You are setting up ReFeree (radar place recognition from features and free space
 git clone https://github.com/sparolab/ReFeree.git && cd ReFeree
 ```
 
-Layout: `cpp/` C++17 core (`referee::referee`: `radar_utils` reader, `features` Cen 2018 extraction, `descriptor` range/angle descriptors, `retrieval` lookup and yaw), `python/referee` the same in Python (`pip install referee-radar`), `applications/slam/common` (ROS-free odometry and back end), `applications/slam/ros1` and `applications/slam/ros2` (the same two nodes on each ROS), `applications/slam/tools` (MulRan converter, evaluation), `docker/ros1`, `docker/ros2`.
+Layout: `cpp/` C++17 core (`referee::referee`: `radar_utils` reader, `features` Cen 2018 extraction, `descriptor` range/angle descriptors, `retrieval` lookup and yaw), `python/referee` the same in Python (`pip install referee-radar`), `applications/slam/common` (ROS-free odometry and back end), `applications/slam/ros1` and `applications/slam/ros2` (the same two nodes on each ROS), `applications/slam/tools` (MulRan converter, evaluation), `applications/multi-session-slam` (LT-SLAM style alignment of two sessions, ROS-free), `docker/ros1`, `docker/ros2`.
 
 ## 2. Library
 
@@ -63,3 +63,15 @@ REFEREE_SCANS=<converted>/KAIST_03/polar MULRAN_GT=<MulRan>/KAIST_03/xypose.csv 
 ```
 
 On the whole of KAIST_03 expect 3,459 keyframes, about 1,300 loop edges and a rigid (no-scale) ATE RMSE near 6.2 m for SLAM against 80.4 m for the odometry alone, on ROS 2 and ROS 1 alike (they share `applications/slam/common`); the odometry log warns that 4 scans kept the previous motion.
+
+## 5. Multi-session (optional)
+
+Two sessions of the same place, each written by the SLAM in its own frame (both ROS versions write `Scans/` and `RefereeDescriptors/` next to the graph). For a test, split a converted MulRan sequence in two folders (KAIST_03: the first 1730 scans and the remaining 1731, as `KAIST_03_01/polar` and `KAIST_03_02/polar`) and run the SLAM on each with `save_directory:=<sessions>/01/` and `<sessions>/02/`. Then:
+
+```bash
+docker run --rm -v <sessions>:/data/output/sessions referee:humble \
+  ros2 run referee_multi_session multi_session_node /referee/applications/multi-session-slam/config/kaist03_split.yaml
+# ROS 1 image: referee:noetic multi_session_node <config.yaml>; without Docker: see applications/multi-session-slam/README.md
+```
+
+It writes `<sessions>/LT_result/`: both sessions in the central frame before and after (`*_central_{bfr,aft}_intersession_loops.txt`) and `inter_session_loops.txt`. On KAIST_03 split in two expect about 880 inter-session loops, and the second session's keyframes within 0.7 m (p50) of the first's after alignment (30 m before), 77 % within 5 m.

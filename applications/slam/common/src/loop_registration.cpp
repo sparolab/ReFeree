@@ -25,11 +25,16 @@ Cloud::Ptr rotatedAboutZ(const Cloud::Ptr& cloud, double yaw) {
 
 std::optional<gtsam::Pose3> registerLoop(const KeyframeStore& store, const LoopProposal& proposal,
                                          const RegistrationParams& params) {
-  const Cloud::Ptr target = store.cloud(proposal.previous_index);
-  Cloud::Ptr source = store.cloud(proposal.current_index);
+  return registerClouds(store.cloud(proposal.previous_index), store.cloud(proposal.current_index),
+                        proposal.yaw_difference, params);
+}
+
+std::optional<gtsam::Pose3> registerClouds(const Cloud::Ptr& target, Cloud::Ptr source, double yaw_difference,
+                                           const RegistrationParams& params) {
   if (!target || !source || target->empty() || source->empty()) return std::nullopt;
 
-  if (params.use_descriptor_yaw) source = rotatedAboutZ(source, proposal.yaw_difference);
+  const double seed_yaw = params.use_descriptor_yaw ? yaw_difference : 0.0;
+  if (seed_yaw != 0.0) source = rotatedAboutZ(source, seed_yaw);
 
   nano_gicp::NanoGICP<PointType, PointType> gicp;
   gicp.setMaxCorrespondenceDistance(params.max_correspondence_distance);
@@ -50,8 +55,11 @@ std::optional<gtsam::Pose3> registerLoop(const KeyframeStore& store, const LoopP
   if (!gicp.hasConverged() || gicp.getFitnessScore() > params.fitness_threshold)
     return std::nullopt;
 
-  float x, y, z, roll, pitch, yaw;
+  // GICP aligned the pre-rotated source, so the source's pose in the target frame is the correction after
+  // that rotation (the released code dropped the seed rotation from the constraint).
   Eigen::Affine3f correction(gicp.getFinalTransformation());
+  correction = correction * Eigen::AngleAxisf(static_cast<float>(seed_yaw), Eigen::Vector3f::UnitZ());
+  float x, y, z, roll, pitch, yaw;
   pcl::getTranslationAndEulerAngles(correction, x, y, z, roll, pitch, yaw);
 
   if (params.max_translation > 0.0 &&

@@ -24,6 +24,13 @@ void savePoseGraphG2o(const std::string& path, const std::vector<Pose6D>& poses,
                       const std::vector<std::string>& edges);
 
 void saveVerticesKitti(const std::string& path, const std::vector<Pose6D>& poses);
+
+// The two ReFeree descriptors of a keyframe, as text: the range descriptor on the first line, the angle
+// descriptor on the second (what the multi-session tool reads back).
+void writeRefereeDescriptorText(const std::string& path, const std::vector<float>& range_descriptor,
+                                const std::vector<float>& angle_descriptor);
+bool readRefereeDescriptorText(const std::string& path, std::vector<float>& range_descriptor,
+                               std::vector<float>& angle_descriptor);
 void saveVerticesKitti(const std::string& path, const gtsam::Values& estimates);
 
 }  // namespace referee_slam

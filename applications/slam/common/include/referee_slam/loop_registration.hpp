@@ -40,6 +40,12 @@ struct RegistrationParams {
   double max_translation = 3.0;
 };
 
+// The pose of `source` in `target`'s frame, both clouds in their own sensor frames, starting from the
+// descriptor's yaw; nothing when the fit is not good enough to trust (fitness, residual translation).
+// Shared by the single-session back end and the multi-session tool.
+std::optional<gtsam::Pose3> registerClouds(const Cloud::Ptr& target, Cloud::Ptr source, double yaw_difference,
+                                           const RegistrationParams& params);
+
 // The transform from the current keyframe to the previous one, or nothing when
 // the fit is not good enough to trust.
 std::optional<gtsam::Pose3> registerLoop(const KeyframeStore& store, const LoopProposal& proposal,
